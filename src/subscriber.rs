@@ -1,28 +1,52 @@
 use std::{error::Error};
-use std::{thread, time};
+use std::sync::mpsc::channel;
+use std::thread;
 
-type ConsumeResult = Result<(), Box<dyn Error>>;
-type SubscribeResult = Result<Box<dyn Subscriber>, Box<dyn Error>>;
+
+use amiquip::{Connection, Result, Channel, QueueDeclareOptions, ConsumerMessage, ConsumerOptions};
+
+type MessageConsumedResult = Result<(), Box<dyn Error>>;
+type CreateSubscriberResult = Result<Box<RabbitSubscriber>, Box<dyn Error>>;
 
 pub trait Subscriber {
-    fn subscribe(&self, event_name: String, handler: fn(message: String) -> ConsumeResult) -> SubscribeResult;
+    // async fn subscribe(&self, event_name: String, handler: fn(message: String) -> MessageConsumedResult) -> Result<(), Box<dyn Error>>;
 }
 
-pub struct RabbitSubscriber;
+pub struct RabbitSubscriber {
+    channel: Box<Channel>,
+}
 
 impl RabbitSubscriber {
-    pub fn new() -> Result<RabbitSubscriber, Box<dyn Error>> {
-        Ok(RabbitSubscriber)
+    pub fn new(url: String) -> CreateSubscriberResult {        
+        Ok(Box::new(RabbitSubscriber {
+            channel: Box::new(Connection::insecure_open(&url)?.open_channel(None)?)
+        }))
     }
 }
 
-impl Subscriber for RabbitSubscriber {
-    fn subscribe(&self, event_name: String, handler: fn(message: String) -> ConsumeResult) -> SubscribeResult {
-        loop {
-            let ten_millis = time::Duration::from_millis(2500);
-            let now = time::Instant::now();
-            thread::sleep(ten_millis);
-            let _ = handler(ToString::to_string(&"test"));
+impl RabbitSubscriber {
+    pub async fn subscribe(&self, event_name: String, handler: fn(message: String) -> MessageConsumedResult) -> Result<(), Box<dyn Error>> {
+        
+        let queue = self.channel.queue_declare(&event_name, QueueDeclareOptions::default())?;
+        let consumer = queue.consume(ConsumerOptions::default())?;
+
+        for message in consumer.receiver().iter() {
+            match message {
+                ConsumerMessage::Delivery(delivery) => {
+                    let body = String::from_utf8_lossy(&delivery.body);
+                    if let Ok(_) = handler(body.to_string()) {
+                        consumer.ack(delivery)?;
+                    } else {
+                        let _ = consumer.nack(delivery, false);
+                    }
+                }
+                other => {
+                    println!("Consumer ended: {:?}", other);
+                    break;
+                }
+            }
         }
+
+        Ok(())
     }
 }
