@@ -1,23 +1,22 @@
 #[cfg(test)]
 mod integration {
-    use event_bus::subscriber::{RabbitSubscriber, Subscriber};
-
-    #[test]
-    fn create_rabbit_test() {
-        if let Ok(_subs) = RabbitSubscriber::new("amqp://guest:guest@localhost:5672".to_string()) {
-            assert!(true);
-        } else {
-            assert!(false);
-        }
-    }
+    use event_bus::subscriber::RabbitSubscriber;
 
     #[test]
     fn create_subscription() {
-        if let Ok(subs) = RabbitSubscriber::new("amqp://guest:guest@localhost:5672".to_string()) {
-            let _ = subs.subscribe("test".to_string(), |message| {
+        if let Ok(subs) = RabbitSubscriber::create_subscription("amqp://guest:guest@localhost:5672".to_string()) {
+            let res = subs("test".to_string(), |message| {
                 println!("{}", message);
                 Ok(())
             });
+
+            match res {
+                Ok(_) => assert!(true),
+                Err(err) => {
+                    println!("{:?}", err);
+                    assert!(false);
+                },
+            }
         } else {
             assert!(false);
         }
