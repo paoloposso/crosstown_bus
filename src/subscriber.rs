@@ -1,39 +1,48 @@
-use std::error::Error;
+use std::{error::Error, pin::Pin, thread, borrow::Borrow};
 
 use amiquip::{Connection, Result, QueueDeclareOptions, ConsumerMessage, ConsumerOptions};
+use futures::Future;
 
-type SubscritpionResult = Result<(), Box<dyn Error>>;
+type HandleResult = Result<(), Box<dyn Error>>;
 
-pub struct RabbitSubscriber;
+pub struct RabbitBus {
+    url: String,
+    queue: String
+}
 
-impl RabbitSubscriber {
-    pub fn create_subscription(url: String) 
-        -> Result<impl Fn(String, fn(message: String) -> SubscritpionResult) -> SubscritpionResult, Box<dyn Error>> {    
+impl RabbitBus {
 
-        Ok(move |event_name: String, handler: fn(message: String) -> Result<(), Box<dyn Error>>| 
-                    -> Result<(), Box<dyn Error>> {
-                let mut cnn = Connection::insecure_open(&url)?;
-                let channel = cnn.open_channel(None)?;
-                let queue = channel.queue_declare(&event_name, QueueDeclareOptions::default())?;
-                let consumer = queue.consume(ConsumerOptions::default())?;
+    pub fn new(url: String, queue: String) -> RabbitBus {
+        RabbitBus { url, queue }
+    }
 
-                for message in consumer.receiver().iter() {
-                    match message {
-                        ConsumerMessage::Delivery(delivery) => {
-                            let body = String::from_utf8_lossy(&delivery.body);
-                            if let Ok(_) = handler(body.to_string()) {
-                                consumer.ack(delivery)?;  
-                            } else {
-                                let _ = consumer.nack(delivery, false);
+    pub async fn subscribe(&self, handler: fn(message: String) -> HandleResult) -> HandleResult {
+        if let Ok(mut cnn) = Connection::insecure_open(&self.url) {
+            if let Ok(channel) = cnn.open_channel(None) {
+                if let Ok(queue) = channel.queue_declare(&self.queue, QueueDeclareOptions::default()) {
+                    if let Ok(consumer) = queue.consume(ConsumerOptions::default()) {
+                        async move {
+                            for message in consumer.receiver().iter() {
+                                match message {
+                                    ConsumerMessage::Delivery(delivery) => {
+                                        let body = String::from_utf8_lossy(&delivery.body);
+                                        if let Ok(_) = handler(body.to_string()) {
+                                            consumer.ack(delivery).unwrap();  
+                                        } else {
+                                            let _ = consumer.nack(delivery, false);
+                                        }
+                                    }
+                                    other => {
+                                        println!("Consumer ended: {:?}", other);
+                                        break;
+                                    }
+                                }
                             }
-                        }
-                        other => {
-                            println!("Consumer ended: {:?}", other);
-                            break;
-                        }
+                        }.await;
                     }
                 }
-                Ok(())
-            })
+            }
+        }
+        Ok(())
     }
 }
