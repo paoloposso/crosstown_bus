@@ -2,29 +2,30 @@
 #[cfg(test)]
 mod integration {
 
-    use event_bus::subscriber::RabbitBus;
-    use futures::{executor::block_on, future::join, join};
-    use tokio::select;
+    use core::time;
+    use std::thread;
+
+    use event_bus::bus::RabbitBus;
+    use futures::executor::block_on;
 
     #[test]
     fn create_subscription() {
 
         block_on(async {
+            let bus = RabbitBus::new("amqp://guest:guest@localhost:5672".to_string());
+            let bus2 = RabbitBus::new("amqp://guest:guest@localhost:5672".to_string());
 
-            let bus = RabbitBus::new("amqp://guest:guest@localhost:5672".to_string(), String::from("user_created"));
-
-            let subscribe_async = bus.subscribe(|message| {
+            let _ = bus.subscribe(String::from("user_created"), |message| {
                 println!("Created now: {}", message);
                 Ok(())
             });
 
-            // let subscribe_asyncx = bus.subscribe("user_updated".to_string(), |message| {
-            //     println!("Updated: {}", message);
-            //     Ok(())
-            // });
+            let _ = bus2.subscribe(String::from("user_updated"), |message| {
+                println!("Created2 now: {}", message);
+                Ok(())
+            });
 
-            let _ = subscribe_async.await;
-            // subscribe_asyncx.await;
+            let _ = thread::sleep(time::Duration::from_secs(50));
         });
     }
 }
