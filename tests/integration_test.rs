@@ -10,7 +10,6 @@ mod integration {
 
     #[test]
     fn create_subscription() {
-
         block_on(async {
             let bus = RabbitBus::new("amqp://guest:guest@localhost:5672".to_string());
             let bus2 = RabbitBus::new("amqp://guest:guest@localhost:5672".to_string());

@@ -1,6 +1,6 @@
 use std::{error::Error, thread};
 
-use amiquip::{Connection, Result, QueueDeclareOptions, ConsumerMessage, ConsumerOptions};
+use amiquip::{Connection, QueueDeclareOptions, ConsumerMessage, ConsumerOptions};
 
 
 type HandleResult = Result<(), Box<dyn Error>>;
@@ -20,21 +20,26 @@ impl RabbitBus {
         let queue = event_name;
 
         thread::spawn(move || {
-            let mut cnn = Connection::insecure_open(&url).unwrap();
-            let channel = cnn.open_channel(None).unwrap();
-            let queue = channel.queue_declare(queue, QueueDeclareOptions::default()).unwrap();
-            let consumer =  queue.consume(ConsumerOptions::default()).unwrap();
-            for message in consumer.receiver().iter() {
-                match message {
-                    ConsumerMessage::Delivery(delivery) => {
-                        let body = String::from_utf8_lossy(&delivery.body);
-                        let _ = handler(body.to_string());
+            match Connection::insecure_open(&url) {
+                Ok(mut cnn) => {
+                    let channel = cnn.open_channel(None).unwrap();
+                    let queue = channel.queue_declare(queue, QueueDeclareOptions::default()).unwrap();
+                    let consumer =  queue.consume(ConsumerOptions::default()).unwrap();
+                    
+                    for message in consumer.receiver().iter() {
+                        match message {
+                            ConsumerMessage::Delivery(delivery) => {
+                                let body = String::from_utf8_lossy(&delivery.body);
+                                let _ = handler(body.to_string());
+                            }
+                            other => {
+                                println!("Consumer ended: {:?}", other);
+                                break;
+                            }
+                        }
                     }
-                    other => {
-                        println!("Consumer ended: {:?}", other);
-                        break;
-                    }
-                }
+                },
+                Err(err) => println!("[bus] Error trying to create connection: {:?}", err),
             }
         });
 
