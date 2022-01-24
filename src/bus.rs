@@ -15,8 +15,8 @@ impl RabbitBus {
         RabbitBus { url }
     }
 
-    pub fn subscribe(self, event_name: String, handler: fn(message: String) -> HandleResult) -> SubscribeResult {
-        let url = self.url;
+    pub fn subscribe_event<'a>(&'a self, event_name: String, handler: fn(message: String) -> HandleResult) -> SubscribeResult {
+        let url = self.url.to_owned();
         let queue = event_name;
 
         thread::spawn(move || {
