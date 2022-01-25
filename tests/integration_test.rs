@@ -3,7 +3,7 @@
 mod integration {
 
     use core::time;
-    use std::thread;
+    use std::{thread, error::Error};
 
     use event_bus::bus::RabbitBus;
     use futures::executor::block_on;
@@ -13,13 +13,13 @@ mod integration {
         block_on(async {
             let bus = RabbitBus::new("amqp://guest:guest@localhost:5672".to_string());
 
-            let _ = bus.subscribe_event(String::from("user_created"), |message| {
+            let _ = bus.subscribe_event(String::from("user_createdx"), |message| {
                 println!("Created now: {}", message);
                 Ok(())
             });
 
-            let _ = bus.subscribe_event(String::from("user_updated"), |message| {
-                println!("Created2 now: {}", message);
+            let _ = bus.subscribe_event(String::from("user_updatedx"), |message| {
+                println!("Updated now: {}", message);
                 Ok(())
             });
 
