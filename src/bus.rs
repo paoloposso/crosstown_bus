@@ -20,13 +20,16 @@ impl RabbitBus {
         let url = self.url.to_owned();
         let event = event_name.to_owned();
         if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
-            let _ = channel.basic_publish::<String>(event_name, Publish {
+            let publish_result = channel.basic_publish::<String>(event_name, Publish {
                 body: message.as_bytes(),
                 routing_key: event,
                 mandatory: false,
                 immediate: false,
                 properties: Default::default(),
             });
+            if publish_result.is_err() { 
+                return Err(Box::new(publish_result.unwrap_err()));
+            }
         }
         Ok(())
     }

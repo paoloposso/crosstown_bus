@@ -13,17 +13,24 @@ mod integration {
         block_on(async {
             let bus = RabbitBus::new("amqp://guest:guest@localhost:5672".to_string());
 
-            let _ = bus.subscribe_event(String::from("user_createdx"), |message| {
+            let _ = bus.subscribe_event(String::from("user_created"), |message| {
                 println!("Created now: {}", message);
+                //assert!(true);
                 Ok(())
             });
 
-            let _ = bus.subscribe_event(String::from("user_updatedx"), |message| {
+            let _ = bus.subscribe_event(String::from("user_updated"), |message| {
                 println!("Updated now: {}", message);
+                //assert!(true);
                 Ok(())
             });
 
-            let _ = thread::sleep(time::Duration::from_secs(50));
+            let _ = bus.publish_event(String::from("user_updated"), String::from("user updated 1"));
+            let _ = bus.publish_event(String::from("user_updated"), String::from("user updated 2"));
+            let _ = bus.publish_event(String::from("user_created"), String::from("paolo"));
+
+            let _ = thread::sleep(time::Duration::from_secs(10));
+            //assert!(false);
         });
     }
 }
