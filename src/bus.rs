@@ -1,10 +1,11 @@
 use std::{error::Error, thread};
 
-use amiquip::{Connection, QueueDeclareOptions, ConsumerMessage, ConsumerOptions, FieldTable, AmqpValue, ExchangeDeclareOptions};
+use amiquip::{Connection, QueueDeclareOptions, ConsumerMessage, ConsumerOptions, FieldTable, ExchangeDeclareOptions, Publish};
 
 
 type HandleResult = Result<(), Box<dyn Error>>;
 type SubscribeResult = Result<(), Box<dyn Error>>;
+type PublishResult = Result<(), Box<dyn Error>>;
 
 pub struct RabbitBus {
     url: String
@@ -15,6 +16,21 @@ impl RabbitBus {
         RabbitBus { url }
     }
 
+    pub fn publish_event<'a>(&'a self, event_name: String, message: String) -> PublishResult {
+        let url = self.url.to_owned();
+        let event = event_name.to_owned();
+        if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
+            let _ = channel.basic_publish::<String>(event_name, Publish {
+                body: message.as_bytes(),
+                routing_key: event,
+                mandatory: false,
+                immediate: false,
+                properties: Default::default(),
+            });
+        }
+        Ok(())
+    }
+
     pub fn subscribe_event<'a>(&'a self, event_name: String, handler: fn(message: String) -> HandleResult) -> SubscribeResult {
         let url = self.url.to_owned();
         let queue_name = event_name;
@@ -22,50 +38,58 @@ impl RabbitBus {
         thread::spawn(move || {
             match Connection::insecure_open(&url) {
                 Ok(mut cnn) => {
-                    let channel = cnn.open_channel(None).unwrap();
-                    
-                    let queue = channel.queue_declare(queue_name.to_owned(), QueueDeclareOptions {
-                        durable: false,
-                        exclusive: false,
-                        auto_delete: false,
-                        ..Default::default()
-                    }).unwrap();
-
-                    let exchange_declare_options = ExchangeDeclareOptions {
-                        auto_delete: false,
-                        durable: false,
-                        internal: false,
-                        ..Default::default()
-                    };
-
-                    let _ = queue.bind(&channel.exchange_declare::<String>(amiquip::ExchangeType::Fanout, queue_name.to_owned(), exchange_declare_options).unwrap(), 
-                        "".to_string(), FieldTable::new());
-
-                    let consumer =  queue.consume(ConsumerOptions::default()).unwrap();
-                    
-                    for message in consumer.receiver().iter() {
-                        match message {
-                            ConsumerMessage::Delivery(delivery) => {
-                                let body = String::from_utf8_lossy(&delivery.body);
-
-                                let _ = match handler(body.to_string()) {
-                                    Ok(_) => { 
-                                        let _ = delivery.ack(&channel);
-                                    },
-                                    Err(error) => { 
-                                        println!("Error trying to process message: {:?}", error.as_ref());
-                                        let _ = delivery.nack(&channel, false);
-                                    },
+                    if let Ok(channel) = cnn.open_channel(None) {
+                        match channel.queue_declare(queue_name.to_owned(), QueueDeclareOptions {
+                            durable: false,
+                            exclusive: false,
+                            auto_delete: false,
+                            ..Default::default()
+                        }) {
+                            Ok(queue) => {
+                                let exchange_declare_options = ExchangeDeclareOptions {
+                                    auto_delete: false,
+                                    durable: false,
+                                    internal: false,
+                                    ..Default::default()
                                 };
-                            }
-                            other => {
-                                println!("Consumer ended: {:?}", other);
-                                break;
-                            }
-                        }
+            
+                                let _ = queue.bind(
+                                    &channel.exchange_declare::<String>(amiquip::ExchangeType::Fanout, queue_name.to_owned(), exchange_declare_options).unwrap(), 
+                                    "".to_string(), FieldTable::new());
+            
+                                if let Ok(consumer) = queue.consume(ConsumerOptions::default()) {
+                                    for message in consumer.receiver().iter() {
+                                        match message {
+                                            ConsumerMessage::Delivery(delivery) => {
+                                                let body = String::from_utf8_lossy(&delivery.body);
+                
+                                                let _ = match handler(body.to_string()) {
+                                                    Ok(_) => { 
+                                                        let _ = delivery.ack(&channel);
+                                                    },
+                                                    Err(error) => { 
+                                                        println!("Error trying to process message: {:?}", error.as_ref());
+                                                        let _ = delivery.nack(&channel, false);
+                                                    },
+                                                };
+                                            }
+                                            other => {
+                                                println!("Consumer ended: {:?}", other);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    eprintln!("[bus] Error trying to consume");
+                                }
+                            },
+                            Err(err) => eprintln!("[bus] Error creating Queue: {:?}", err),
+                        };
+                    } else {
+                        eprintln!("[bus] Error opening channel");
                     }
                 },
-                Err(err) => println!("[bus] Error trying to create connection: {:?}", err),
+                Err(err) => eprintln!("[bus] Error trying to create connection: {:?}", err),
             }
         });
 

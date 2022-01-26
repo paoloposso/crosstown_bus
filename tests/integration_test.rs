@@ -3,7 +3,7 @@
 mod integration {
 
     use core::time;
-    use std::{thread, error::Error};
+    use std::{thread};
 
     use event_bus::bus::RabbitBus;
     use futures::executor::block_on;
