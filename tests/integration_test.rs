@@ -15,13 +15,11 @@ mod integration {
 
             let _ = bus.subscribe_event(String::from("user_created"), |message| {
                 println!("Created now: {}", message);
-                //assert!(true);
                 Ok(())
             });
 
             let _ = bus.subscribe_event(String::from("user_updated"), |message| {
                 println!("Updated now: {}", message);
-                //assert!(true);
                 Ok(())
             });
 
@@ -30,7 +28,6 @@ mod integration {
             let _ = bus.publish_event(String::from("user_created"), String::from("paolo"));
 
             let _ = thread::sleep(time::Duration::from_secs(10));
-            //assert!(false);
         });
     }
 }

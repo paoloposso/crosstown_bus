@@ -19,7 +19,7 @@ pub fn new_rabbit_bus(url: String) -> Bus {
 }
 
 impl Bus {
-    pub fn publish_event<'a>(&'a self, event_name: String, message: String) -> PublishResult {
+    pub fn publish_event(&self, event_name: String, message: String) -> PublishResult {
         let url = self.url.to_owned();
         let event = event_name.to_owned();
         if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
@@ -37,7 +37,7 @@ impl Bus {
         Ok(())
     }
 
-    pub fn subscribe_event<'a>(&'a self, event_name: String, handler: fn(message: String) -> HandleResult) -> SubscribeResult {
+    pub fn subscribe_event(&self, event_name: String, handler: fn(message: String) -> HandleResult) -> SubscribeResult {
         let url = self.url.to_owned();
         let queue_name = event_name;
 
