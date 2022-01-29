@@ -21,11 +21,10 @@ pub fn new_rabbit_bus(url: String) -> Bus {
 impl Bus {
     pub fn publish_event(&self, event_name: String, message: String) -> PublishResult {
         let url = self.url.to_owned();
-        let event = event_name.to_owned();
         if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
-            let publish_result = channel.basic_publish::<String>(event_name, Publish {
+            let publish_result = channel.basic_publish::<String>(event_name.to_owned(), Publish {
                 body: message.as_bytes(),
-                routing_key: event,
+                routing_key: event_name.to_owned(),
                 mandatory: false,
                 immediate: false,
                 properties: Default::default(),
@@ -37,9 +36,12 @@ impl Bus {
         Ok(())
     }
 
-    pub fn subscribe_event(&self, event_name: String, handler: fn(message: String) -> HandleResult) -> SubscribeResult {
+    pub fn subscribe_event(&self, event_name: String, handler_name: String, handler: fn(message: String) -> (bool, HandleResult)) -> SubscribeResult {
         let url = self.url.to_owned();
-        let queue_name = event_name;
+
+        let mut queue_name = event_name.to_owned();
+        queue_name.push_str(&String::from("."));
+        queue_name.push_str(&handler_name);
 
         thread::spawn(move || {
             match Connection::insecure_open(&url) {
@@ -60,7 +62,7 @@ impl Bus {
                                 };
             
                                 let _ = queue.bind(
-                                    &channel.exchange_declare::<String>(amiquip::ExchangeType::Fanout, queue_name.to_owned(), exchange_declare_options).unwrap(), 
+                                    &channel.exchange_declare::<String>(amiquip::ExchangeType::Fanout, event_name.to_owned(), exchange_declare_options).unwrap(), 
                                     "".to_string(), FieldTable::new());
             
                                 if let Ok(consumer) = queue.consume(ConsumerOptions::default()) {
@@ -69,15 +71,20 @@ impl Bus {
                                             ConsumerMessage::Delivery(delivery) => {
                                                 let body = String::from_utf8_lossy(&delivery.body);
                 
-                                                let _ = match handler(body.to_string()) {
-                                                    Ok(_) => { 
-                                                        let _ = delivery.ack(&channel);
-                                                    },
-                                                    Err(error) => { 
-                                                        println!("Error trying to process message: {:?}", error.as_ref());
-                                                        let _ = delivery.nack(&channel, false);
-                                                    },
-                                                };
+                                                let handle_result = handler(body.to_string());
+
+                                                let retry_on_error = handle_result.0;
+                                                let result = handle_result.1;
+
+                                                if result.is_ok() {
+                                                    let _ = delivery.ack(&channel);
+                                                } else {
+                                                    if retry_on_error {
+                                                        let _ = delivery.nack(&channel, true);
+                                                    } else {
+                                                        let _ = delivery.reject(&channel, false);
+                                                    }
+                                                }
                                             }
                                             other => {
                                                 println!("Consumer ended: {:?}", other);
