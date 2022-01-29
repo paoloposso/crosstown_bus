@@ -5,7 +5,7 @@ mod integration {
     use core::time;
     use std::thread;
 
-    use rusty_bus::new_rabbit_bus;
+    use crosstown_bus::new_rabbit_bus;
     use futures::executor::block_on;
 
     #[test]

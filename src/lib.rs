@@ -1,6 +1,6 @@
-//! # Rusty Bus
+//! # Crosstown Bus
 //!
-//! `rusty_bus` is an easy-to-use event bus in Rust with RabbitMQ.
+//! `crosstown_bus` is an easy-to-configure bus in Rust with RabbitMQ for event_driven systems.
 
 use std::{error::Error, thread};
 

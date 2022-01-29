@@ -1,10 +1,10 @@
 [package]
-name = "rusty_bus"
+name = "crosstown_bus"
 version = "0.1.0"
 edition = "2021"
 authors = ["paoloposso <pvictorsys@gmail.com>"]
 readme = "README.md"
-repository = "https://github.com/paoloposso/rusty_bus"
+repository = "https://github.com/paoloposso/crosstown_bus"
 description = "Event Bus with RabbitMQ for Rust"
 license = "MIT OR Apache-2.0"
 
