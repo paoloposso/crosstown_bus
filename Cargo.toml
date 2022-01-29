@@ -13,4 +13,3 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 amiquip = { version = "0.4", default-features = false }
 futures = "0.3"
-tokio = {version="1.6.1", features = ["full"]}

@@ -28,7 +28,9 @@ mod integration {
                 (false, Ok(()))
             });
 
-            let _ = bus.publish_event(String::from("user_updated"), String::from("user updated 1"));
+            let _ = bus.publish_event(String::from("user_created"), String::from("Paolo"));
+            let _ = bus.publish_event(String::from("user_updated"), String::from("Paolo Victor"));
+            let _ = bus.publish_event(String::from("user_created"), String::from("Thayna"));
 
             let _ = thread::sleep(time::Duration::from_secs(10));
         });
