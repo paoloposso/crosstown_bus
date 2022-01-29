@@ -2,7 +2,7 @@
 name = "rusty_bus"
 version = "0.1.0"
 edition = "2021"
-authors = ["Paolo <pvictorsys@gmail.com>"]
+authors = ["paoloposso <pvictorsys@gmail.com>"]
 readme = "README.md"
 repository = "https://github.com/paoloposso/rusty_bus"
 description = "Event Bus with RabbitMQ for Rust"
