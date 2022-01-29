@@ -5,6 +5,8 @@ edition = "2021"
 authors = ["Paolo <pvictorsys@gmail.com>"]
 readme = "README.md"
 repository = "https://github.com/paoloposso/rusty_bus"
+description = "Event Bus with RabbitMQ for Rust"
+license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
