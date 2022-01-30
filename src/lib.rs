@@ -157,17 +157,17 @@ impl Bus {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::Bus;
+#[cfg(test)]
+mod tests {
+    use crate::Bus;
 
-//     #[test]
-//     fn new_bus_works() {
-//         let bus = Bus::new_rabbit_bus("url".to_string()).unwrap();
-//         if bus.url.len() > 0 {
-//             assert!(true);
-//         } else {
-//             assert!(false);
-//         }
-//     }
-// }
+    #[test]
+    fn new_bus_works() {
+        let bus = Bus::new_rabbit_bus("url".to_string()).unwrap();
+        if bus.url.len() > 0 {
+            assert!(true);
+        } else {
+            assert!(false);
+        }
+    }
+}
