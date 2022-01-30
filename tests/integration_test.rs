@@ -5,13 +5,13 @@ mod integration {
     use core::time;
     use std::thread;
 
-    use crosstown_bus::new_rabbit_bus;
+    use crosstown_bus::Bus;
     use futures::executor::block_on;
 
     #[test]
     fn create_subscription() {
         block_on(async {
-            let bus = new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string());
+            let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
             let _ = bus.subscribe_event(String::from("user_created"), String::from("send_email"), |message| {
                 println!("User CREATED email sent now: {}", message);
