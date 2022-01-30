@@ -8,7 +8,9 @@ Flexible and easy to configure Event Bus for event-driven systems in Rust.
 
 ## Creating a Bus object using Rabbit as the Event Broker.     
 ```
-let bus = new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+use crosstown_bus::Bus;
+
+let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 pub fn new_rabbit_bus(url: String) -> Result<Bus, Box<dyn Error>> {
     let channel = Connection::insecure_open(&url)?.open_channel(None)?;
     Ok(Bus { url, channel })
@@ -17,7 +19,9 @@ pub fn new_rabbit_bus(url: String) -> Result<Bus, Box<dyn Error>> {
 
 ## Publishing an Event
 ```
-let bus = new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+use crosstown_bus::Bus;
+
+let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
 let _ = bus.subscribe_event(String::from("user_created"), String::from("send_email"), |message| {
     println!("User CREATED email sent now: {}", message);
@@ -46,7 +50,9 @@ Receives:
 - handler: closure (action) that will be executed when a message is received
 
 ```
-let bus = new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+use crosstown_bus::Bus;
+
+let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
 let _ = bus.subscribe_event(String::from("user_updated"), String::from("update_database"), |message| {
     println!("Database Updated now: {}", message);
