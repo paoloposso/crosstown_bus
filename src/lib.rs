@@ -1,6 +1,6 @@
 //! # Crosstown Bus
 //!
-//! `crosstown_bus` is an easy-to-configure bus in Rust with RabbitMQ for event_driven systems.
+//! `crosstown_bus` is an easy-to-configure bus in Rust with RabbitMQ for event-driven systems.
 
 use std::{error::Error, thread};
 
@@ -56,7 +56,6 @@ impl Bus {
     /// let _ = bus.publish_event(String::from("user_created"), String::from("Thayna"));
     /// ```
     pub fn publish_event(&self, event_name: String, message: String) -> PublishResult {
-
         let url = self.url.to_owned();
         if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
             let publish_result = channel.basic_publish::<String>(event_name.to_owned(), Publish {
