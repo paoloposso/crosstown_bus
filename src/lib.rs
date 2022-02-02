@@ -32,31 +32,34 @@ impl Bus {
     /// # Examples
     ///
     /// ```
-    /// use crosstown_bus::Bus;
-    /// 
+    /// pub struct UserUpdated {}
+    /// pub struct UserCreated {}
+
     /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
-    /// let _ = bus.subscribe_event(String::from("user_created"), String::from("send_email"), |message| {
-    ///     println!("User CREATED email sent now: {}", message);
+    /// let _ = bus.subscribe_event::<UserCreated>(String::from("user_created"), String::from("send_email"), |message| {
+    /// println!("User CREATED! e-mail sent now: {}", message);
     ///     (false, Ok(()))
     /// });
 
-    /// let _ = bus.subscribe_event(String::from("user_updated"), String::from("send_email"), |message| {
-    ///     println!("User updated email sent now: {}", message);
+    /// let _ = bus.subscribe_event::<UserUpdated>(String::from("user_updated"), String::from("send_email"), |message| {
+    ///         println!("User Updated! e-mail sent now: {}", message);
     ///     (false, Ok(()))
     /// });
 
-    /// let _ = bus.subscribe_event(String::from("user_updated"), String::from("update_database"), |message| {
-    ///     println!("Database Updated now: {}", message);
+    /// let _ = bus.subscribe_event::<UserUpdated>(String::from("user_updated"), String::from("update_database"), |message| {
+    ///     println!("User Updated! Database Updated now: {}", message);
     ///     (false, Ok(()))
     /// });
 
-    /// let _ = bus.publish_event(String::from("user_created"), String::from("Paolo"));
-    /// let _ = bus.publish_event(String::from("user_updated"), String::from("Paolo Victor"));
-    /// let _ = bus.publish_event(String::from("user_created"), String::from("Thayna"));
+    /// let res = bus.publish_event::<UserCreated>(String::from("user_created"), String::from("Paolo"));
+    /// let _ = bus.publish_event::<UserUpdated>(String::from("user_updated"), String::from("Paolo Victor"));
+    /// let _ = bus.publish_event::<UserCreated>(String::from("user_created"), String::from("Thayna"));
     /// ```
-    pub fn publish_event(&self, event_name: String, message: String) -> PublishResult {
+    pub fn publish_event<T>(&self, event_name: String, message: String) -> PublishResult {
         let url = self.url.to_owned();
+        let event_name = get_event_name::<T>();
+
         if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
             let publish_result = channel.basic_publish::<String>(event_name.to_owned(), Publish {
                 body: message.as_bytes(),
@@ -72,28 +75,10 @@ impl Bus {
         Ok(())
     }
 
-    /// Subscribes to an event.
-    /// Receives:
-    /// - event_name: name of the event to be expected
-    /// - action_name: action that will be executed when receiving the message for that event
-    /// - handler: closure (action) that will be executed when a message is received
-    /// # Examples
-    ///
-    /// ```
-    /// use crosstown_bus::Bus;
-    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
-
-    /// let _ = bus.subscribe_event(String::from("user_updated"), String::from("update_database"), |message| {
-    ///     println!("Database Updated now: {}", message);
-    ///     (false, Ok(()))
-    /// });
-    /// ```
     pub fn subscribe_event<T>(&self, event_name: String, action_name: String, handler: fn(message: String) -> (bool, HandleResult)) -> SubscribeResult {
         let url = self.url.to_owned();
 
-        let full_event_name = std::any::type_name::<T>().to_string();
-        let event_array = full_event_name.split("::").collect::<Vec<&str>>();
-        let event_name = event_array.last().unwrap().to_string();
+        let event_name = get_event_name::<T>();
 
         let mut queue_name = event_name.to_owned();
         queue_name.push_str(&String::from("."));
@@ -164,6 +149,13 @@ impl Bus {
 
         Ok(())
     }
+}
+
+fn get_event_name<T>() -> String {
+    let full_event_name = std::any::type_name::<T>().to_string();
+    let event_array = full_event_name.split("::").collect::<Vec<&str>>();
+    let event_name = event_array.last().unwrap().to_string();
+    event_name
 }
 
 // #[cfg(test)]
