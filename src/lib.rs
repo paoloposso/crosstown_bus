@@ -88,8 +88,12 @@ impl Bus {
     ///     (false, Ok(()))
     /// });
     /// ```
-    pub fn subscribe_event(&self, event_name: String, action_name: String, handler: fn(message: String) -> (bool, HandleResult)) -> SubscribeResult {
+    pub fn subscribe_event<T>(&self, event_name: String, action_name: String, handler: fn(message: String) -> (bool, HandleResult)) -> SubscribeResult {
         let url = self.url.to_owned();
+
+        let full_event_name = std::any::type_name::<T>().to_string();
+        let event_array = full_event_name.split("::").collect::<Vec<&str>>();
+        let event_name = event_array.last().unwrap().to_string();
 
         let mut queue_name = event_name.to_owned();
         queue_name.push_str(&String::from("."));
