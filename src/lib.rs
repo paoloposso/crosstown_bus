@@ -15,14 +15,7 @@ pub struct Bus {
 }
 
 impl Bus {
-    /// Creates a Bus object using Rabbit as Event Broker.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use crosstown_bus::Bus;
-    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
-    /// ```
+    
     pub fn new_rabbit_bus(url: String) -> Result<Bus, Box<dyn Error>> {
         Ok(Bus { url })
     }
@@ -32,31 +25,20 @@ impl Bus {
     /// # Examples
     ///
     /// ```
-    /// pub struct UserUpdated {}
+    /// use crosstown_bus::{Bus};
+    /// 
     /// pub struct UserCreated {}
 
     /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
-    /// let _ = bus.subscribe_event::<UserCreated>(String::from("user_created"), String::from("send_email"), |message| {
+    /// let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |message| {
     /// println!("User CREATED! e-mail sent now: {}", message);
     ///     (false, Ok(()))
     /// });
 
-    /// let _ = bus.subscribe_event::<UserUpdated>(String::from("user_updated"), String::from("send_email"), |message| {
-    ///         println!("User Updated! e-mail sent now: {}", message);
-    ///     (false, Ok(()))
-    /// });
-
-    /// let _ = bus.subscribe_event::<UserUpdated>(String::from("user_updated"), String::from("update_database"), |message| {
-    ///     println!("User Updated! Database Updated now: {}", message);
-    ///     (false, Ok(()))
-    /// });
-
-    /// let res = bus.publish_event::<UserCreated>(String::from("user_created"), String::from("Paolo"));
-    /// let _ = bus.publish_event::<UserUpdated>(String::from("user_updated"), String::from("Paolo Victor"));
-    /// let _ = bus.publish_event::<UserCreated>(String::from("user_created"), String::from("Thayna"));
+    /// let res = bus.publish_event::<UserCreated>(String::from("Paolo"));
     /// ```
-    pub fn publish_event<T>(&self, event_name: String, message: String) -> PublishResult {
+    pub fn publish_event<T>(&self, message: String) -> PublishResult {
         let url = self.url.to_owned();
         let event_name = get_event_name::<T>();
 
@@ -75,7 +57,7 @@ impl Bus {
         Ok(())
     }
 
-    pub fn subscribe_event<T>(&self, event_name: String, action_name: String, handler: fn(message: String) -> (bool, HandleResult)) -> SubscribeResult {
+    pub fn subscribe_event<T>(&self, action_name: String, handler: fn(message: String) -> (bool, HandleResult)) -> SubscribeResult {
         let url = self.url.to_owned();
 
         let event_name = get_event_name::<T>();
