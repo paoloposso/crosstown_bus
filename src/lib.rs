@@ -32,7 +32,7 @@ impl Bus {
     /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
     /// let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |message| {
-    /// println!("User CREATED! e-mail sent now: {}", message);
+    ///     println!("User CREATED! e-mail sent now: {}", message);
     ///     (false, Ok(()))
     /// });
 
