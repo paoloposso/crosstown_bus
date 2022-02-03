@@ -3,6 +3,7 @@
 //! `crosstown_bus` is an easy-to-configure bus in Rust with RabbitMQ for event-driven systems.
 
 use std::{error::Error, thread};
+use serde_json::json;
 
 use amiquip::{Connection, QueueDeclareOptions, ConsumerMessage, ConsumerOptions, FieldTable, ExchangeDeclareOptions, Publish};
 
@@ -22,12 +23,17 @@ impl Bus {
 
     /// Publishes an event.
     ///
-    /// # Examples
-    ///
+    /// # Example
     /// ```
     /// use crosstown_bus::{Bus};
+    /// use serde::Serialize;
+    /// use serde::Deserialize;
     /// 
-    /// pub struct UserCreated {}
+    /// #[derive(Serialize, Deserialize)]
+    /// pub struct UserCreated {
+    ///     name: String,
+    ///     id: String
+    /// }
 
     /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
@@ -36,15 +42,21 @@ impl Bus {
     ///     (false, Ok(()))
     /// });
 
-    /// let res = bus.publish_event::<UserCreated>(String::from("Paolo"));
+    /// let res = bus.publish_event::<UserCreated>(UserCreated {
+    ///     name: "Paolo".to_owned(),
+    ///     id: "F458asYfj".to_owned()
+    /// });
     /// ```
-    pub fn publish_event<T>(&self, message: String) -> PublishResult {
+    pub fn publish_event<T>(&self, message: T) -> PublishResult 
+        where T: serde::ser::Serialize {
         let url = self.url.to_owned();
         let event_name = get_event_name::<T>();
 
+        let message_json = json!(message).to_string();
+
         if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
             let publish_result = channel.basic_publish::<String>(event_name.to_owned(), Publish {
-                body: message.as_bytes(),
+                body: message_json.as_bytes(),
                 routing_key: event_name.to_owned(),
                 mandatory: false,
                 immediate: false,
@@ -57,6 +69,7 @@ impl Bus {
         Ok(())
     }
 
+    /// Subscribes to an event
     pub fn subscribe_event<T>(&self, action_name: String, handler: fn(message: String) -> (bool, HandleResult)) -> SubscribeResult {
         let url = self.url.to_owned();
 
@@ -139,18 +152,3 @@ fn get_event_name<T>() -> String {
     let event_name = event_array.last().unwrap().to_string();
     event_name
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::Bus;
-
-//     #[test]
-//     fn new_bus_works() {
-//         let bus = Bus::new_rabbit_bus("url".to_string()).unwrap();
-//         if bus.url.len() > 0 {
-//             assert!(true);
-//         } else {
-//             assert!(false);
-//         }
-//     }
-// }

@@ -4,13 +4,24 @@ mod integration {
 
     use core::time;
     use std::thread;
+    use serde::Serialize;
+    use serde::Deserialize;
 
     use crosstown_bus::{Bus};
     
     #[test]
     fn create_subscription() {
-        pub struct UserUpdated {}
-        pub struct UserCreated {}
+        #[derive(Serialize, Deserialize)]
+        pub struct UserUpdated {
+            name: String,
+            id: String
+        }
+
+        #[derive(Serialize, Deserialize)]
+        pub struct UserCreated {
+            name: String,
+            id: String
+        }
 
         let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
@@ -29,9 +40,20 @@ mod integration {
             (false, Ok(()))
         });
 
-        let res = bus.publish_event::<UserCreated>(String::from("Paolo"));
-        let _ = bus.publish_event::<UserUpdated>(String::from("Paolo Victor"));
-        let _ = bus.publish_event::<UserCreated>(String::from("Thayna"));
+        let res = bus.publish_event::<UserCreated>(UserCreated {
+            name: "Paolo".to_owned(),
+            id: "F458asYfj".to_owned()
+        });
+
+        let _ = bus.publish_event::<UserCreated>(UserCreated {
+            name: "Thayna".to_owned(),
+            id: "PkjioYHb".to_owned()
+        });
+
+        let _ = bus.publish_event::<UserUpdated>(UserUpdated {
+            name: "Thayna T".to_owned(),
+            id: "PkjioYHb".to_owned()
+        });
 
         assert!(res.is_ok());
 
