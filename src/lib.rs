@@ -17,13 +17,16 @@ pub struct Bus {
     url: String
 }
 
-impl<'a> Bus {
+impl Bus {
     
     pub fn new_rabbit_bus(url: String) -> Result<Bus, Box<dyn Error>> {
         Ok(Bus { url })
     }
 
-    /// Publishes an event.
+    /// Subscribes to an event. 
+    /// The action name represents the action that will be taken after the message is received. It will also be used as queue name.
+    /// Multiple queues can be connected to the same exchange (abstracted as Event in this case) and all of them will receive a copy of the message.
+    ///  /// Publishes an event.
     ///
     /// # Example
     /// ```
@@ -43,42 +46,12 @@ impl<'a> Bus {
     ///     println!("User CREATED! e-mail sent now: {}", message);
     ///     (false, Ok(()))
     /// });
-
-    /// let res = bus.publish_event::<UserCreated>(UserCreated {
-    ///     name: "Paolo".to_owned(),
-    ///     id: "F458asYfj".to_owned()
-    /// });
     /// ```
-    pub fn publish_event<T>(&self, message: T) -> PublishResult 
-        where T: serde::Serialize {
-        let url = self.url.to_owned();
-        let event_name = get_event_name::<T>();
-
-        let message_json = json!(message).to_string();
-
-        if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
-            let publish_result = channel.basic_publish::<String>(event_name.to_owned(), Publish {
-                body: message_json.as_bytes(),
-                routing_key: event_name.to_owned(),
-                mandatory: false,
-                immediate: false,
-                properties: Default::default(),
-            });
-            if publish_result.is_err() {
-                return Err(Box::new(publish_result.unwrap_err()));
-            }
-        }
-        Ok(())
-    }
-
-    /// Subscribes to an event. 
-    /// The action name represents the action that will be taken after the message is received. It will also be used as queue name.
-    /// Multiple queues can be connected to the same exchange (abstracted as Event in this case) and all of them will receive a copy of the message.
-    pub fn subscribe_event<T: 'a>(
-            &self, 
-            action_name: String,
-            handler: fn(String) -> (bool, HandleResult)
-        ) -> SubscribeResult where T : serde::Deserialize<'a> {
+    pub fn subscribe_event<'a, T: 'a>(
+        &self, 
+        action_name: String,
+        handler: fn(String) -> (bool, HandleResult)
+    ) -> SubscribeResult where T : serde::Deserialize<'a> {
 
         let event_name = get_event_name::<T>();
 
@@ -152,6 +125,50 @@ impl<'a> Bus {
             }
         });
 
+        Ok(())
+    }
+
+
+    /// Publishes an event.
+    ///
+    /// # Example
+    /// ```
+    /// use crosstown_bus::{Bus};
+    /// use serde::Serialize;
+    /// use serde::Deserialize;
+    /// 
+    /// #[derive(Serialize, Deserialize)]
+    /// pub struct UserCreated {
+    ///     name: String,
+    ///     id: String
+    /// }
+
+    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+
+    /// let res = bus.publish_event::<UserCreated>(UserCreated {
+    ///     name: "Paolo".to_owned(),
+    ///     id: "F458asYfj".to_owned()
+    /// });
+    /// ```
+    pub fn publish_event<T>(&self, message: T) -> PublishResult 
+        where T: serde::Serialize {
+        let url = self.url.to_owned();
+        let event_name = get_event_name::<T>();
+
+        let message_json = json!(message).to_string();
+
+        if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
+            let publish_result = channel.basic_publish::<String>(event_name.to_owned(), Publish {
+                body: message_json.as_bytes(),
+                routing_key: event_name.to_owned(),
+                mandatory: false,
+                immediate: false,
+                properties: Default::default(),
+            });
+            if publish_result.is_err() {
+                return Err(Box::new(publish_result.unwrap_err()));
+            }
+        }
         Ok(())
     }
 }
