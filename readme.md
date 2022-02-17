@@ -56,7 +56,7 @@ use crosstown_bus::Bus;
 let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
 let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |message| {
-    println!("User CREATED! e-mail sent now: {}", message);
+    println!("User CREATED! e-mail sent now: {:?}", message);
     (false, Ok(()))
 });
 ```
@@ -80,13 +80,13 @@ Then, the message sent to the exchange will be broadcasted to all subscribers, a
 ```
 use crosstown_bus::Bus;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UserUpdated {
     name: String,
     id: String
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UserCreated {
     name: String,
     id: String
@@ -94,18 +94,18 @@ pub struct UserCreated {
 
 let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
-let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |message| {
-    println!("User CREATED! e-mail sent now: {}", message);
+let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |event| {
+    println!("E-mail USER CREATED sent TO {}: {:?}", event.name, event);
     (false, Ok(()))
 });
 
-let _ = bus.subscribe_event::<UserUpdated>(String::from("send_email"), |message| {
-    println!("User Updated! e-mail sent now: {}", message);
+let _ = bus.subscribe_event::<UserUpdated>(String::from("send_email"), |event| {
+    println!("E-mail USER UPDATED sent: {:?}", event);
     (false, Ok(()))
 });
 
-let _ = bus.subscribe_event::<UserUpdated>(String::from("update_database"), |message| {
-    println!("User Updated! Database Updated now: {}", message);
+let _ = bus.subscribe_event::<UserUpdated>(String::from("update_database"), |event| {
+    println!("User Updated! Database Updated with user {}: {:?}", event.name, event);
     (false, Ok(()))
 });
 
@@ -121,6 +121,6 @@ let _ = bus.publish_event::<UserCreated>(UserCreated {
 
 let _ = bus.publish_event::<UserUpdated>(UserUpdated {
     name: "Thayna T".to_owned(),
-    id: "PkjioYHb".to_owned()
+    id: "123456".to_owned()
 });
 ```
