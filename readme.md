@@ -9,18 +9,29 @@ Flexible and easy to configure Event Bus for event-driven systems in Rust.
 
 ## Creating the structs for your project
 
-The structs that will be published by Crosstown Bus must derive from Serialize and Deserialize traits.
+The structs that will be published by Crosstown Bus must derive from BorshSerialize and BorshDeserialize traits.
 
 ```
-#[derive(Serialize, Deserialize)]
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct UserUpdated {
     name: String,
     id: String
 }
 ```
-They can be passed as parameter to the publisher method and deserialized inside of the handler.
-When publishing and subscribing events it's necessary to inform the struct type via generics.
-See https://doc.rust-lang.org/rust-by-example/generics.html to understand more about generics in Rust.
+
+They can be passed as parameter to the publisher method and deserialized inside of the handler using the borsh crate.
+You must include reference to borsh in your Cargo.toml file as follows:
+```
+borsh = "0.9.3"
+borsh-derive = "0.9.1"
+```
+See https://docs.rs/borsh/latest/borsh/ to know more about borsh.
+
+When publishing and subscribing events it's necessary to inform the struct type via generics like the example bellow:
+```
+bus.subscribe_event::<UserCreated>(...)
+```
+See https://doc.rust-lang.org/rust-by-example/generics.html to know more about generics in Rust.
 
 
 ## Creating a Bus object using Rabbit as the Event Broker
