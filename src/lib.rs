@@ -2,12 +2,11 @@
 //!
 //! `crosstown_bus` is an easy-to-configure bus in Rust with RabbitMQ for event-driven systems.
 
-use std::{error::Error, thread, sync::Arc, rc::Rc, borrow::{BorrowMut, Borrow}, collections::HashMap};
-use futures::AsyncReadExt;
-use serde::__private::from_utf8_lossy;
-use serde_json::json;
+use std::{error::Error, thread};
 
-use amiquip::{Connection, QueueDeclareOptions, ConsumerMessage, ConsumerOptions, FieldTable, ExchangeDeclareOptions, Publish, Delivery};
+use amiquip::{Connection, QueueDeclareOptions, ConsumerMessage, ConsumerOptions, FieldTable, ExchangeDeclareOptions, Publish};
+
+use borsh::{BorshDeserialize, BorshSerialize};
 
 type HandleResult = Result<(), Box<dyn Error>>;
 type SubscribeResult = Result<(), Box<dyn Error>>;
@@ -31,10 +30,9 @@ impl Bus {
     /// # Example
     /// ```
     /// use crosstown_bus::{Bus};
-    /// use serde::Serialize;
-    /// use serde::Deserialize;
+    /// use borsh::{BorshDeserialize, BorshSerialize};
     /// 
-    /// #[derive(Serialize, Deserialize)]
+    /// #[derive(BorshSerialize, BorshDeserialize, Debug)]
     /// pub struct UserCreated {
     ///     name: String,
     ///     id: String
@@ -42,16 +40,16 @@ impl Bus {
 
     /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
 
-    /// let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |message| {
-    ///     println!("User CREATED! e-mail sent now: {}", message);
+    /// let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |event| {
+    ///     println!("E-mail USER CREATED sent TO {}: {:?}", event.name, event);
     ///     (false, Ok(()))
     /// });
     /// ```
-    pub fn subscribe_event<'a, T: 'a>(
+    pub fn subscribe_event<T: 'static>(
         &self, 
         action_name: String,
-        handler: fn(String) -> (bool, HandleResult)
-    ) -> SubscribeResult where T : serde::Deserialize<'a> {
+        handler: fn(T) -> (bool, HandleResult)
+    ) -> SubscribeResult where T : BorshDeserialize {
 
         let event_name = get_event_name::<T>();
 
@@ -88,9 +86,12 @@ impl Bus {
                                         match message {
                                             ConsumerMessage::Delivery(delivery) => {
                                                 
-                                                let final_message = String::from_utf8_lossy(&delivery.body).to_string();
-                
-                                                let handle_result = handler(final_message);
+                                                let str_message = String::from_utf8_lossy(&delivery.body).to_string();
+                                                let mut buf = str_message.as_bytes();
+
+                                                let model: T = BorshDeserialize::deserialize(&mut buf).unwrap();
+
+                                                let handle_result = handler(model);
 
                                                 let retry_on_error = handle_result.0;
                                                 let result = handle_result.1;
@@ -128,38 +129,37 @@ impl Bus {
         Ok(())
     }
 
-
     /// Publishes an event.
     ///
     /// # Example
     /// ```
     /// use crosstown_bus::{Bus};
-    /// use serde::Serialize;
-    /// use serde::Deserialize;
+    /// use borsh::{BorshDeserialize, BorshSerialize};
     /// 
-    /// #[derive(Serialize, Deserialize)]
+    /// #[derive(BorshSerialize, BorshDeserialize, Debug)]
     /// pub struct UserCreated {
     ///     name: String,
     ///     id: String
     /// }
-
+    /// 
     /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
-
     /// let res = bus.publish_event::<UserCreated>(UserCreated {
     ///     name: "Paolo".to_owned(),
     ///     id: "F458asYfj".to_owned()
     /// });
     /// ```
     pub fn publish_event<T>(&self, message: T) -> PublishResult 
-        where T: serde::Serialize {
+        where T: BorshDeserialize + BorshSerialize {
         let url = self.url.to_owned();
         let event_name = get_event_name::<T>();
 
-        let message_json = json!(message).to_string();
+        let mut buffer = Vec::new();
+
+        message.serialize(&mut buffer)?;
 
         if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
             let publish_result = channel.basic_publish::<String>(event_name.to_owned(), Publish {
-                body: message_json.as_bytes(),
+                body: &buffer,
                 routing_key: event_name.to_owned(),
                 mandatory: false,
                 immediate: false,
@@ -171,11 +171,6 @@ impl Bus {
         }
         Ok(())
     }
-}
-
-fn get_deserialized_message<'a, T: 'a>(message: &'a String) -> T 
-    where T : serde::Deserialize<'a> + 'a {
-        serde_json::from_str(&message).unwrap()
 }
 
 fn get_event_name<T>() -> String {
