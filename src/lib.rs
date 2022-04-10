@@ -18,14 +18,13 @@ pub struct Bus {
 
 impl Bus {
     
-    pub fn new_rabbit_bus(url: String) -> Result<Bus, Box<dyn Error>> {
-        Ok(Bus { url })
+    pub fn new_rabbit_bus(url: String) -> Bus {
+        Bus { url }
     }
 
     /// Subscribes to an event. 
     /// The action name represents the action that will be taken after the message is received. It will also be used as queue name.
     /// Multiple queues can be connected to the same exchange (abstracted as Event in this case) and all of them will receive a copy of the message.
-    ///  /// Publishes an event.
     ///
     /// # Example
     /// ```
@@ -38,7 +37,7 @@ impl Bus {
     ///     id: String
     /// }
 
-    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string());
 
     /// let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |event| {
     ///     println!("E-mail USER CREATED sent TO {}: {:?}", event.name, event);
@@ -76,44 +75,49 @@ impl Bus {
                                     internal: false,
                                     ..Default::default()
                                 };
-            
-                                let _ = queue.bind(
-                                    &channel.exchange_declare::<String>(amiquip::ExchangeType::Fanout, event_name.to_owned(), exchange_declare_options).unwrap(), 
-                                    "".to_string(), FieldTable::new());
-            
-                                if let Ok(consumer) = queue.consume(ConsumerOptions::default()) {
-                                    for message in consumer.receiver().iter() {
-                                        match message {
-                                            ConsumerMessage::Delivery(delivery) => {
-                                                
-                                                let str_message = String::from_utf8_lossy(&delivery.body).to_string();
-                                                let mut buf = str_message.as_bytes();
 
-                                                let model: T = BorshDeserialize::deserialize(&mut buf).unwrap();
-
-                                                let handle_result = handler(model);
-
-                                                let retry_on_error = handle_result.0;
-                                                let result = handle_result.1;
-
-                                                if result.is_ok() {
-                                                    let _ = delivery.ack(&channel);
-                                                } else {
-                                                    if retry_on_error {
-                                                        let _ = delivery.nack(&channel, true);
+                                if let Ok(exchange) = &channel.exchange_declare::<String>(amiquip::ExchangeType::Fanout, event_name.to_owned(), exchange_declare_options) {
+                                    let _ = queue.bind(
+                                        exchange, 
+                                        "".to_string(), FieldTable::new());
+                                        
+                                    if let Ok(consumer) = queue.consume(ConsumerOptions::default()) {
+                                        for message in consumer.receiver().iter() {
+                                            match message {
+                                                ConsumerMessage::Delivery(delivery) => {
+                                                    let str_message = String::from_utf8_lossy(&delivery.body).to_string();
+                                                    let mut buf = str_message.as_bytes();
+    
+                                                    if let Ok(model) = BorshDeserialize::deserialize(&mut buf) {
+                                                        let handle_result = handler(model);
+    
+                                                        let retry_on_error = handle_result.0;
+                                                        let result = handle_result.1;
+        
+                                                        if result.is_ok() {
+                                                            let _ = delivery.ack(&channel);
+                                                        } else {
+                                                            if retry_on_error {
+                                                                let _ = delivery.nack(&channel, true);
+                                                            } else {
+                                                                let _ = delivery.reject(&channel, false);
+                                                            }
+                                                        }
                                                     } else {
-                                                        let _ = delivery.reject(&channel, false);
+                                                        eprintln!("[bus] Error trying to desserialize. Check message format. Message: {:?}", str_message);
                                                     }
                                                 }
-                                            }
-                                            other => {
-                                                println!("Consumer ended: {:?}", other);
-                                                break;
+                                                other => {
+                                                    println!("Consumer ended: {:?}", other);
+                                                    break;
+                                                }
                                             }
                                         }
+                                    } else {
+                                        eprintln!("[bus] Error trying to consume");
                                     }
                                 } else {
-                                    eprintln!("[bus] Error trying to consume");
+                                    eprintln!("[bus] Error declaring exchange");
                                 }
                             },
                             Err(err) => eprintln!("[bus] Error creating Queue: {:?}", err),
@@ -142,7 +146,7 @@ impl Bus {
     ///     id: String
     /// }
     /// 
-    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string());
     /// let res = bus.publish_event::<UserCreated>(UserCreated {
     ///     name: "Paolo".to_owned(),
     ///     id: "F458asYfj".to_owned()

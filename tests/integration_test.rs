@@ -22,7 +22,7 @@ mod integration {
             id: String
         }
 
-        let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+        let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string());
 
         let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |event| {
             println!("E-mail USER CREATED sent TO {}: {:?}", event.name, event);
