@@ -12,15 +12,22 @@ type HandleResult = Result<(), Box<dyn Error>>;
 type SubscribeResult = Result<(), Box<dyn Error>>;
 type PublishResult = Result<(), Box<dyn Error>>;
 
-pub struct Bus {
-    url: String
+pub struct Publisher {
+    cnn: Box::<Connection>
 }
 
-impl Bus {
-    
-    pub fn new_rabbit_bus(url: String) -> Bus {
-        Bus { url }
+pub struct Subscriber {
+    url: String,
+    // cnn: Box::<Connection>
+}
+
+impl Subscriber {
+    pub fn new(url: String) -> Subscriber {
+        Subscriber { 
+            url
+        }
     }
+
 
     /// Subscribes to an event. 
     /// The action name represents the action that will be taken after the message is received. It will also be used as queue name.
@@ -28,7 +35,7 @@ impl Bus {
     ///
     /// # Example
     /// ```
-    /// use crosstown_bus::{Bus};
+    /// use crosstown_bus::{Subscriber};
     /// use borsh::{BorshDeserialize, BorshSerialize};
     /// 
     /// #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -37,9 +44,9 @@ impl Bus {
     ///     id: String
     /// }
 
-    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string());
+    /// let subs = Subscriber::new("amqp://guest:guest@localhost:5672".to_string());
 
-    /// let _ = bus.subscribe_event::<UserCreated>(String::from("send_email"), |event| {
+    /// let _ = subs.subscribe_event::<UserCreated>(String::from("send_email"), |event| {
     ///     println!("E-mail USER CREATED sent TO {}: {:?}", event.name, event);
     ///     (false, Ok(()))
     /// });
@@ -59,7 +66,8 @@ impl Bus {
         let url = self.url.to_owned();
 
         thread::spawn(move || {
-            match Connection::insecure_open(&url) {
+            let connection_res = Connection::insecure_open(&url);
+            match connection_res {
                 Ok(mut cnn) => {
                     if let Ok(channel) = cnn.open_channel(None) {
                         match channel.queue_declare(queue_name.to_owned(), QueueDeclareOptions {
@@ -129,15 +137,24 @@ impl Bus {
                 Err(err) => eprintln!("[bus] Error trying to create connection: {:?}", err),
             }
         });
-
         Ok(())
     }
 
+}
+
+impl Publisher {
+    pub fn new(url: String) -> Result<Publisher, Box<dyn Error>> {
+        let cnn = Connection::insecure_open(&url).unwrap();
+        Ok(Publisher { 
+            cnn: Box::new(cnn)
+        })
+    }
+    
     /// Publishes an event.
     ///
     /// # Example
     /// ```
-    /// use crosstown_bus::{Bus};
+    /// use crosstown_bus::{Publisher};
     /// use borsh::{BorshDeserialize, BorshSerialize};
     /// 
     /// #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -146,22 +163,21 @@ impl Bus {
     ///     id: String
     /// }
     /// 
-    /// let bus = Bus::new_rabbit_bus("amqp://guest:guest@localhost:5672".to_string());
+    /// let bus = Publisher::new("amqp://guest:guest@localhost:5672".to_string());
     /// let res = bus.publish_event::<UserCreated>(UserCreated {
     ///     name: "Paolo".to_owned(),
     ///     id: "F458asYfj".to_owned()
     /// });
     /// ```
-    pub fn publish_event<T>(&self, message: T) -> PublishResult 
+    pub fn publish_event<T>(&mut self, message: T) -> PublishResult 
         where T: BorshDeserialize + BorshSerialize {
-        let url = self.url.to_owned();
         let event_name = get_event_name::<T>();
 
         let mut buffer = Vec::new();
 
         message.serialize(&mut buffer)?;
 
-        if let Ok(channel) = Connection::insecure_open(&url)?.open_channel(None) {
+        if let Ok(channel) = self.cnn.open_channel(None) {
             let publish_result = channel.basic_publish::<String>(event_name.to_owned(), Publish {
                 body: &buffer,
                 routing_key: event_name.to_owned(),
@@ -175,11 +191,15 @@ impl Bus {
         }
         Ok(())
     }
+
+    pub fn disconnect_publisher(mut self) -> Result<(), Box::<dyn Error>> {
+        self.cnn.close()?;
+        Ok(())
+    }
 }
 
 fn get_event_name<T>() -> String {
     let full_event_name = std::any::type_name::<T>().to_string();
     let event_array = full_event_name.split("::").collect::<Vec<&str>>();
-    let event_name = event_array.last().unwrap().to_string();
-    event_name
+    event_array.last().unwrap().to_string()
 }
