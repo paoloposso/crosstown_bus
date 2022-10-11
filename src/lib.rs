@@ -163,7 +163,7 @@ impl Publisher {
     ///     id: String
     /// }
     /// 
-    /// let bus = Publisher::new("amqp://guest:guest@localhost:5672".to_string());
+    /// let mut bus = Publisher::new("amqp://guest:guest@localhost:5672".to_string()).unwrap();
     /// let res = bus.publish_event::<UserCreated>(UserCreated {
     ///     name: "Paolo".to_owned(),
     ///     id: "F458asYfj".to_owned()
@@ -192,7 +192,27 @@ impl Publisher {
         Ok(())
     }
 
-    pub fn disconnect_publisher(mut self) -> Result<(), Box::<dyn Error>> {
+    /// Closes the Publisher connection to the event broker (RabbitMQ). 
+    ///
+    /// # Example
+    /// ```
+    /// use crosstown_bus::{Publisher};
+    /// use borsh::{BorshDeserialize, BorshSerialize};
+    /// 
+    /// #[derive(BorshSerialize, BorshDeserialize, Debug)]
+    /// pub struct UserCreated {
+    ///     name: String,
+    ///     id: String
+    /// }
+    /// 
+    /// let mut publisher = Publisher::new("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+    /// let res = publisher.publish_event::<UserCreated>(UserCreated {
+    ///     name: "Paolo".to_owned(),
+    ///     id: "F458asYfj".to_owned()
+    /// });
+    /// _ = publisher.disconnect_publisher();
+    /// ```
+    pub fn disconnect_publisher(self) -> Result<(), Box::<dyn Error>> {
         self.cnn.close()?;
         Ok(())
     }
