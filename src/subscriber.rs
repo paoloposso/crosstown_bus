@@ -24,7 +24,7 @@ impl Subscriber {
         }
     }
 
-    pub fn add_subscription<T>(mut self, event_name: String, handler: Rc<dyn MessageHandler<String>>) 
+    pub fn add_subscription<T>(&mut self, event_name: String, handler: Rc<dyn MessageHandler<String>>) 
         -> Result<(), Box<dyn Error>> where T: ?Sized {
         if self.subs_manager.handlers.contains_key(&event_name) {
             self.subs_manager.handlers.get_mut(&event_name).unwrap().push(handler);
@@ -36,7 +36,7 @@ impl Subscriber {
         Ok(())
     }
 
-    pub fn subscribe_registered_events(mut self) {
+    pub async fn subscribe_registered_events(mut self) {
         let url = self.url.to_owned();
 
         for (event_name, subscriptions) in self.subs_manager.handlers.iter_mut() {

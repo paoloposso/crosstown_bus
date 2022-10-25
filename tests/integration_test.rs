@@ -27,11 +27,13 @@ impl MessageHandler::<String> for MyCustomHandler {
 
 #[test]
 fn create_subscription() {
-    // let subscriber = Subscriber::new("amqp://guest:guest@localhost:5672".to_string());
+    let mut subscriber = Subscriber::new("amqp://guest:guest@localhost:5672".to_string());
 
-    // subscriber.add_subscription::<String>("test1".to_owned(), Rc::new(MyCustomHandler {}));
+    _ = subscriber.add_subscription::<String>("test1".to_owned(), Rc::new(MyCustomHandler {}));
+    _ = subscriber.add_subscription::<String>("test1".to_owned(), Rc::new(MyCustomHandler {}));
 
-    // let publisher = Publisher::new("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+    let publ = Publisher::new("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+    // publ.publish_event();
 
-    // subscriber.subscribe_registered_events();
+    futures::executor::block_on(subscriber.subscribe_registered_events());
 }
