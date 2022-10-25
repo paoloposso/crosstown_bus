@@ -3,11 +3,9 @@
 //! `crosstown_bus` is an easy-to-configure bus in Rust with RabbitMQ for event-driven systems.
 
 pub mod tools;
-mod publisher;
-mod subscriber;
+mod bus;
 mod message;
 
-pub use publisher::Publisher;
-pub use subscriber::Subscriber;
+pub use bus::Bus;
 pub use message::Message;
 pub use message::MessageHandler;
