@@ -1,112 +1,83 @@
-use amiquip::{ConsumerOptions,ConsumerMessage};
-use amiquip::FieldTable;
-use amiquip::ExchangeDeclareOptions;
-use amiquip::QueueDeclareOptions;
-use amiquip::Connection;
+use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions, 
+    Connection};
 use borsh::BorshDeserialize;
+use std::borrow::Borrow;
+use std::collections::HashMap;
 use std::error::Error;
-use std::{thread};
-
-use crate::tools::helpers::get_event_name;
+use std::rc::Rc;
+use crate::message::MessageHandler;
 
 pub struct Subscriber {
     url: String,
-    // cnn: Box::<Connection>
+    subs_manager: SubscriptionManager
+}
+
+pub struct SubscriptionManager {
+    handlers: HashMap<String, Vec<Rc<dyn MessageHandler<String>>>>
 }
 
 impl Subscriber {
     pub fn new(url: String) -> Self {
         Self { 
-            url
+            url,
+            subs_manager: SubscriptionManager { handlers: HashMap::new() }
         }
     }
 
-    pub fn subscribe_event<T: 'static>(
-        &self, 
-        action_name: String,
-        handler: fn(T) -> (bool, Result<(), Box<dyn Error>>)
-    ) -> Result<(), Box<dyn Error>> where T : BorshDeserialize {
+    pub fn add_subscription<T>(mut self, event_name: String, handler: Rc<dyn MessageHandler<String>>) 
+        -> Result<(), Box<dyn Error>> where T: ?Sized {
+        if self.subs_manager.handlers.contains_key(&event_name) {
+            self.subs_manager.handlers.get_mut(&event_name).unwrap().push(handler);
+        } else {
+            let mut handler_list: Vec<Rc<dyn MessageHandler<String>>> = Vec::new();
+            handler_list.push(handler);
+            self.subs_manager.handlers.insert(event_name, handler_list);
+        }
+        Ok(())
+    }
 
-        let event_name = get_event_name::<T>();
-
-        let mut queue_name = event_name.to_owned();
-        queue_name.push_str(&String::from("."));
-        queue_name.push_str(&action_name);
-
+    pub fn subscribe_registered_events(mut self) {
         let url = self.url.to_owned();
 
-        thread::spawn(move || {
-            let connection_res = Connection::insecure_open(&url);
-            match connection_res {
-                Ok(mut cnn) => {
-                    if let Ok(channel) = cnn.open_channel(None) {
-                        match channel.queue_declare(queue_name.to_owned(), QueueDeclareOptions {
-                            durable: false,
-                            exclusive: false,
-                            auto_delete: false,
-                            ..Default::default()
-                        }) {
-                            Ok(queue) => {
-                                let exchange_declare_options = ExchangeDeclareOptions {
-                                    auto_delete: false,
-                                    durable: false,
-                                    internal: false,
-                                    ..Default::default()
-                                };
-
-                                if let Ok(exchange) = &channel.exchange_declare::<String>(amiquip::ExchangeType::Fanout, event_name.to_owned(), exchange_declare_options) {
-                                    let _ = queue.bind(
-                                        exchange, 
-                                        "".to_string(), FieldTable::new());
-                                        
-                                    if let Ok(consumer) = queue.consume(ConsumerOptions::default()) {
-                                        for message in consumer.receiver().iter() {
-                                            match message {
-                                                ConsumerMessage::Delivery(delivery) => {
-                                                    let str_message = String::from_utf8_lossy(&delivery.body).to_string();
-                                                    let mut buf = str_message.as_bytes();
+        for (event_name, subscriptions) in self.subs_manager.handlers.iter_mut() {
+            for subs in subscriptions {
+                let queue_name = event_name.to_owned();
+                let mut cnn = Connection::insecure_open(&url).unwrap();
+                let channel = cnn.open_channel(None).unwrap();
+                let queue = channel.queue_declare(queue_name.to_owned(), QueueDeclareOptions {
+                    durable: false,
+                    exclusive: false,
+                    auto_delete: false,
+                    ..Default::default()
+                }).unwrap();
     
-                                                    if let Ok(model) = BorshDeserialize::deserialize(&mut buf) {
-                                                        let handle_result = handler(model);
+                match queue.borrow().consume(ConsumerOptions::default()) {
+                    Ok(consumer) => {
+                        for message in consumer.receiver().iter() {
+                            match message {
+                                ConsumerMessage::Delivery(delivery) => {
+                                    let str_message = String::from_utf8_lossy(&delivery.body).to_string();
+                                    let mut buf = str_message.as_bytes();
     
-                                                        let retry_on_error = handle_result.0;
-                                                        let result = handle_result.1;
-        
-                                                        if result.is_ok() {
-                                                            let _ = delivery.ack(&channel);
-                                                        } else {
-                                                            if retry_on_error {
-                                                                let _ = delivery.nack(&channel, true);
-                                                            } else {
-                                                                let _ = delivery.reject(&channel, false);
-                                                            }
-                                                        }
-                                                    } else {
-                                                        eprintln!("[bus] Error trying to desserialize. Check message format. Message: {:?}", str_message);
-                                                    }
-                                                }
-                                                other => {
-                                                    println!("Consumer ended: {:?}", other);
-                                                    break;
-                                                }
-                                            }
-                                        }
+                                    if let Ok(model) = BorshDeserialize::deserialize(&mut buf) {
+                                        _ = subs.handle(model);
+                                        _ = delivery.ack(&channel);
                                     } else {
-                                        eprintln!("[bus] Error trying to consume");
+                                        eprintln!("[bus] Error trying to desserialize. Check message format. Message: {:?}", str_message);
                                     }
-                                } else {
-                                    eprintln!("[bus] Error declaring exchange");
                                 }
-                            },
-                            Err(err) => eprintln!("[bus] Error creating Queue: {:?}", err),
-                        };
-                    } else {
-                        eprintln!("[bus] Error opening channel");
+                                other => {
+                                    println!("Consumer ended: {:?}", other);
+                                    break;
+                                }
+                            }
+                        }
                     }
-                },
-                Err(err) => eprintln!("[bus] Error trying to create connection: {:?}", err),
+                    Err(_) => {
+                                    eprintln!("[bus] Error trying to consume");
+                                }
+                };
             }
-        });
-        Ok(())
+        }
     }
 }

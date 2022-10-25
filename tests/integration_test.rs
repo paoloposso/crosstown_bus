@@ -1,17 +1,14 @@
 #[cfg(test)]
 
 use core::time;
-use std::thread;
+use std::{thread, rc::Rc};
 
 use borsh::{BorshSerialize, BorshDeserialize};
 
-use crosstown_bus::{Publisher, Subscriber};
+use crosstown_bus::{Publisher, Subscriber, Message, MessageHandler};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct UserUpdated {
-    name: String,
-    id: String
-}
+pub struct UserUpdated(String, String);
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct UserCreated {
@@ -19,50 +16,22 @@ pub struct UserCreated {
     id: String
 }
 
-#[test]
-fn create_subscription() {
-    let subscriber = Subscriber::new("amqp://guest:guest@localhost:5672".to_string());
-    let mut publisher = Publisher::new("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+pub struct MyCustomHandler;
 
-    let _ = subscriber.subscribe_event::<UserCreated>(String::from("send_email"), |event| {
-        println!("E-mail USER CREATED sent TO {}: {:?}", event.name, event);
-        (false, Ok(()))
-    });
-
-    let _ = subscriber.subscribe_event::<UserUpdated>(String::from("send_email"), |event| {
-        println!("E-mail USER UPDATED sent: {:?}", event);
-        (false, Ok(()))
-    });
-
-    if subscriber.subscribe_event::<UserUpdated>(
-        String::from("update_database"), 
-        handle_event).is_ok() {
-            assert_eq!(true, true);
-        }
-
-    let res = publisher.publish_event::<UserCreated>(UserCreated {
-        name: "Paolo".to_owned(),
-        id: "F458asYfj".to_owned()
-    });
-
-    let _ = publisher.publish_event::<UserCreated>(UserCreated {
-        name: "Thayna".to_owned(),
-        id: "PkjioYHb".to_owned()
-    });
-
-    let _ = publisher.publish_event::<UserUpdated>(UserUpdated {
-        name: "Thayna T".to_owned(),
-        id: "123456".to_owned()
-    });
-
-    _ = publisher.disconnect_publisher();
-
-    assert!(res.is_ok());
-
-    let _ = thread::sleep(time::Duration::from_secs(10));
+impl MessageHandler::<String> for MyCustomHandler {
+    fn handle(&self, message: Box<Message<String>>) -> Result<(), String> {
+        println!("Message received: {:?}", message);
+        Ok(())
+    }
 }
 
-fn handle_event(event: UserUpdated) -> (bool, Result<(), Box<dyn std::error::Error>>) {
-    println!("E-mail USER UPDATED sent: {:?}", event);
-    (false, Ok(()))
+#[test]
+fn create_subscription() {
+    // let subscriber = Subscriber::new("amqp://guest:guest@localhost:5672".to_string());
+
+    // subscriber.add_subscription::<String>("test1".to_owned(), Rc::new(MyCustomHandler {}));
+
+    // let publisher = Publisher::new("amqp://guest:guest@localhost:5672".to_string()).unwrap();
+
+    // subscriber.subscribe_registered_events();
 }

@@ -6,7 +6,7 @@ use borsh::BorshSerialize;
 use amiquip::Connection;
 use borsh::BorshDeserialize;
 
-use crate::tools::helpers::get_event_name;
+use crate::{tools::helpers::get_event_name, message::Message};
 
 pub struct Publisher(Box::<Connection>);
 
@@ -16,7 +16,7 @@ impl Publisher {
         Ok(Self(Box::new(cnn)))
     }
     
-    pub fn publish_event<T>(&mut self, message: T) -> Result<(), Box<dyn Error>> 
+    pub fn publish_event<T>(&mut self, message: Message::<T>) -> Result<(), Box<dyn Error>> 
         where T: BorshDeserialize + BorshSerialize {
         let event_name = get_event_name::<T>();
 
