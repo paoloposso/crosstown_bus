@@ -1,7 +1,7 @@
 use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions, 
     Connection, Publish};
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::borrow::{Borrow};
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
@@ -30,13 +30,13 @@ impl Bus {
         handler: Arc<dyn MessageHandler<String> + Send + Sync>
     ) 
         -> Result<(), Box<dyn Error>> where T: ?Sized {
-        // if self.subs_manager.handlers.contains_key(&event_name) {
-        //     // self.subs_manager.handlers.get_mut(&event_name).unwrap() = &mut handler;
-        // } else {
-        //     // let mut handler_list = Vec::new();
-        //     // handler_list.push(handler);
-        //     self.subs_manager.handlers.insert(event_name, handler.clone());
-        // }
+        if self.subs_manager.handlers.contains_key(&event_name) {
+            // self.subs_manager.handlers.get_mut(&event_name).unwrap() = &mut handler;
+        } else {
+            // let mut handler_list = Vec::new();
+            // handler_list.push(handler);
+            self.subs_manager.handlers.insert(event_name, handler.clone());
+        }
         Ok(())
     }
 
@@ -62,20 +62,20 @@ impl Bus {
         Ok(())
     }
 
-    pub async fn subscribe_registered_events(&mut self) {
+    pub fn subscribe_registered_events(&mut self) -> Result<(), Box<dyn Error>> {
         for (event_name, handlers_list) in self.subs_manager.handlers.iter_mut() {
             let handler = handlers_list;
             // for handler in handlers_list 
             {
                 let queue_name = event_name.to_owned();
                 let mut connection = self.cnn.borrow_mut();
-                let channel = connection.open_channel(None).unwrap();
+                let channel = connection.open_channel(None)?;
                 let queue = channel.queue_declare(queue_name.to_owned(), QueueDeclareOptions {
                     durable: false,
                     exclusive: false,
                     auto_delete: true,
                     ..Default::default()
-                }).unwrap();
+                })?;
                 match queue.borrow().consume(ConsumerOptions::default()) {
                     Ok(consumer) => {
                         for message in consumer.receiver().iter() {
@@ -105,6 +105,7 @@ impl Bus {
                 };
             }
         }
+        Ok(())
     }
 
     // pub fn close_connection(&self) {
