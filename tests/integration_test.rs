@@ -1,25 +1,11 @@
-#[cfg(test)]
+use std::{sync::Arc, borrow::BorrowMut, error::Error};
 
-use core::time;
-use std::{thread, rc::Rc};
-
-use borsh::{BorshSerialize, BorshDeserialize};
-
-use crosstown_bus::{Bus, Message, MessageHandler};
-
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct UserUpdated(String, String);
-
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct UserCreated {
-    name: String,
-    id: String
-}
+use crosstown_bus::{Bus, EventMessage, MessageHandler};
 
 pub struct MyCustomHandler;
 
 impl MessageHandler::<String> for MyCustomHandler {
-    fn handle(&self, message: Box<Message<String>>) -> Result<(), String> {
+    fn handle(&self, message: Box<EventMessage<String>>) -> Result<(), String> {
         println!("Message received: {:?}", message);
         Ok(())
     }
@@ -27,16 +13,15 @@ impl MessageHandler::<String> for MyCustomHandler {
 
 #[test]
 fn create_subscription() {
-    let mut subscriber = Bus::new("amqp://guest:guest@localhost:5672".to_string());
 
-    _ = subscriber.add_subscription::<String>("test1".to_owned(), Rc::new(MyCustomHandler {}));
-    _ = subscriber.add_subscription::<String>("test1".to_owned(), Rc::new(MyCustomHandler {}));
 
-    _ = subscriber.publish_event("test1".to_owned(), 
-        Message {
-            id: "100AD3".to_owned(),
-            data: "Test".to_owned()
-        });
+}
 
-    futures::executor::block_on(subscriber.subscribe_registered_events());
+async fn execute() -> Result<(), Box<dyn Error>> {
+    let mut subscriber = Bus::new("amqp://guest:guest@localhost:5672".to_owned())?;
+
+    _ = subscriber.add_subscription::<String>("abcd".to_owned(),  Arc::new(MyCustomHandler));
+    _ = subscriber.publish_event("abcd".to_owned(),EventMessage { id: "1234".to_owned(), payload: "asdfsd".to_owned() } );
+
+    Ok(())
 }

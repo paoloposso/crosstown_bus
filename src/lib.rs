@@ -4,8 +4,8 @@
 
 pub mod tools;
 mod bus;
-mod message;
+mod event_message;
 
 pub use bus::Bus;
-pub use message::Message;
-pub use message::MessageHandler;
+pub use event_message::EventMessage;
+pub use event_message::MessageHandler;

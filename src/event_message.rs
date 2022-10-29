@@ -1,12 +1,12 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
-pub struct Message<T> {
+pub struct EventMessage<T> {
     // timestamp: i64,
     pub id: String,
-    pub data: T
+    pub payload: T,
 }
 
 pub trait MessageHandler<T> {
-    fn handle(&self, message: Box<Message<T>>) -> Result<(), String>;
+    fn handle(&self, message: Box<EventMessage<T>>) -> Result<(), String>;
 }
