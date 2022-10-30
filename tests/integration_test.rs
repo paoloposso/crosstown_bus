@@ -1,5 +1,5 @@
 use core::time::{self, Duration};
-use std::{sync::Arc, error::Error, thread};
+use std::{sync::Arc, error::Error, thread, ops::{Deref, DerefMut}};
 
 use crosstown_bus::{Bus, EventMessage, MessageHandler};
 
@@ -39,6 +39,6 @@ fn create_subscription() -> Result<(), Box<dyn Error>> {
     _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "444fffdf".to_owned(), payload: "Hey".to_owned() } );
 
     let _ = thread::sleep(Duration::from_secs(60));
-    
+
     Ok(())
 }

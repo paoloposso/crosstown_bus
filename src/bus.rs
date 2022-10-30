@@ -1,7 +1,8 @@
 use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions, 
     Connection, Publish, Queue};
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -10,7 +11,7 @@ use crate::EventMessage;
 use crate::event_message::MessageHandler;
 
 pub struct Bus {
-    cnn: Mutex<Connection>,
+    pub cnn: Mutex<RefCell<Connection>>,
     subs_manager: SubscriptionManager
 }
 
@@ -21,15 +22,14 @@ pub struct SubscriptionManager {
 impl Bus {
     pub fn new(url: String) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            cnn: Mutex::new(Connection::insecure_open(&url)?),
+            cnn: Mutex::new(RefCell::new(Connection::insecure_open(&url)?)),
             subs_manager: SubscriptionManager { handlers_map: HashMap::new() }
         })
     }
 
     pub fn add_subscription<T>(mut self, event_name: String, 
         handler: Arc<dyn MessageHandler<String> + Send + Sync>
-    ) 
-        -> Result<Self, Box<dyn Error>> where T: ?Sized {
+    ) -> Result<Self, Box<dyn Error>> where T: ?Sized {
         if let Some(list) = self.subs_manager.handlers_map.get_mut(&event_name) {
             list.push(handler);
         } else {
@@ -46,7 +46,7 @@ impl Bus {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
 
-        if let Ok(channel) = self.cnn.lock().unwrap().open_channel(None) {
+        if let Ok(channel) = self.cnn.lock().unwrap().get_mut().open_channel(None) {
             let publish_result = channel.basic_publish::<String>(
                 "".to_owned(),
                 Publish {
@@ -72,7 +72,7 @@ impl Bus {
                 let queue_name = event_name.clone();
                 let cnn = Arc::clone(&connection);
                 tasks.push(thread::spawn(move || {
-                    let channel = cnn.lock().unwrap().open_channel(None).unwrap();
+                    let channel = cnn.lock().unwrap().get_mut().open_channel(None).unwrap();
                     let queue: Queue = channel.queue_declare(queue_name, QueueDeclareOptions {
                         durable: false,
                         exclusive: false,
@@ -112,6 +112,8 @@ impl Bus {
         Ok(())
     }
 
-    pub fn close_connection(mut self) {
+    pub fn close_connection(self) {
+        let mut cnn = self.cnn.lock().unwrap();
+        let a = cnn.get_mut();
     }
 }
