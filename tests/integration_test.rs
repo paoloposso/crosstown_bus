@@ -1,4 +1,4 @@
-use std::{sync::Arc, borrow::BorrowMut, error::Error};
+use std::{sync::Arc, error::Error};
 
 use crosstown_bus::{Bus, EventMessage, MessageHandler};
 
