@@ -1,5 +1,5 @@
-use core::time::{self, Duration};
-use std::{sync::Arc, error::Error, thread, ops::{Deref, DerefMut}};
+use core::time::Duration;
+use std::{sync::Arc, error::Error, thread};
 
 use crosstown_bus::{Bus, EventMessage, MessageHandler};
 

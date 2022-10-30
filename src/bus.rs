@@ -11,7 +11,7 @@ use crate::EventMessage;
 use crate::event_message::MessageHandler;
 
 pub struct Bus {
-    pub cnn: Mutex<RefCell<Connection>>,
+    pub cnn: RefCell<Connection>,
     subs_manager: SubscriptionManager
 }
 
@@ -22,7 +22,7 @@ pub struct SubscriptionManager {
 impl Bus {
     pub fn new(url: String) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            cnn: Mutex::new(RefCell::new(Connection::insecure_open(&url)?)),
+            cnn: RefCell::new(Connection::insecure_open(&url)?),
             subs_manager: SubscriptionManager { handlers_map: HashMap::new() }
         })
     }
@@ -46,7 +46,7 @@ impl Bus {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
 
-        if let Ok(channel) = self.cnn.lock().unwrap().get_mut().open_channel(None) {
+        if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
             let publish_result = channel.basic_publish::<String>(
                 "".to_owned(),
                 Publish {
@@ -65,7 +65,7 @@ impl Bus {
 
     pub async fn subscribe_registered_events(self) -> Result<(), Box::<dyn Error>> {
         let handlers = self.subs_manager.handlers_map;
-        let connection = Arc::new(self.cnn);
+        let connection = Arc::new(Mutex::new(self.cnn));
         let mut tasks = vec![];
         for (event_name, handlers_list) in handlers {
             for handler in handlers_list  {
@@ -112,8 +112,8 @@ impl Bus {
         Ok(())
     }
 
-    pub fn close_connection(self) {
-        let mut cnn = self.cnn.lock().unwrap();
-        let a = cnn.get_mut();
+    pub fn close_connection(mut self) {
+        // let a = self.cnn.to;
+        // a.close();
     }
 }
