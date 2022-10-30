@@ -80,7 +80,7 @@ impl Bus {
                     let queue: Queue = channel.queue_declare(queue_name, QueueDeclareOptions {
                         durable: false,
                         exclusive: false,
-                        auto_delete: true,
+                        auto_delete: false,
                         ..Default::default()
                     }).unwrap();
                     match queue.borrow().consume(ConsumerOptions::default()) {
