@@ -68,14 +68,14 @@ impl Bus {
         Ok(())
     }
 
-    pub async fn subscribe_registered_events(self) -> Result<(), Box::<dyn Error>> {
+    pub fn subscribe_registered_events(self) -> Result<(), Box::<dyn Error>> {
         let handlers = self.subs_manager.handlers_map;
         let connection = Arc::new(self.cnn);
         for (event_name, handlers_list) in handlers {
             for handler in handlers_list  {
                 let queue_name = event_name.clone();
                 let cnn = Arc::clone(&connection);
-                tokio::spawn(async move {
+                thread::spawn(move || {
                     let channel = cnn.lock().unwrap().open_channel(None).unwrap();
                     let queue: Queue = channel.queue_declare(queue_name, QueueDeclareOptions {
                         durable: false,
