@@ -2,18 +2,13 @@ use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions,
     Connection, Publish, Queue};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::{Borrow, BorrowMut};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
-use std::mem::ManuallyDrop;
-use std::ops::{DerefMut, Deref};
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use crate::EventMessage;
 use crate::event_message::MessageHandler;
 
-// #[derive(Clone)]
 pub struct Bus {
     cnn: Mutex<Connection>,
     subs_manager: SubscriptionManager
@@ -68,14 +63,15 @@ impl Bus {
         Ok(())
     }
 
-    pub fn subscribe_registered_events(self) -> Result<(), Box::<dyn Error>> {
+    pub async fn subscribe_registered_events(self) -> Result<(), Box::<dyn Error>> {
         let handlers = self.subs_manager.handlers_map;
         let connection = Arc::new(self.cnn);
+        let mut tasks = vec![];
         for (event_name, handlers_list) in handlers {
             for handler in handlers_list  {
                 let queue_name = event_name.clone();
                 let cnn = Arc::clone(&connection);
-                thread::spawn(move || {
+                tasks.push(thread::spawn(move || {
                     let channel = cnn.lock().unwrap().open_channel(None).unwrap();
                     let queue: Queue = channel.queue_declare(queue_name, QueueDeclareOptions {
                         durable: false,
@@ -93,9 +89,9 @@ impl Bus {
         
                                         if let Ok(model) = BorshDeserialize::deserialize(&mut buf) {
                                             _ = handler.handle(model);
-                                            // _ = delivery.ack(&channel);
+                                            _ = delivery.ack(&channel);
                                         } else {
-                                            // _ = delivery.nack(&channel, false);
+                                            _ = delivery.nack(&channel, false);
                                             eprintln!("[bus] Error trying to desserialize. Check message format. Message: {:?}", str_message);
                                         }
                                     }
@@ -110,14 +106,12 @@ impl Bus {
                             eprintln!("[bus] Error trying to consume");
                         }
                     };
-                });
+                }));
             }
         }
         Ok(())
     }
 
-    // pub fn close_connection(&self) {
-    //     let mut connection = self.cnn.borrow_mut();
-    //     connection.close();
-    // }
+    pub fn close_connection(mut self) {
+    }
 }
