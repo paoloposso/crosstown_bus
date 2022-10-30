@@ -1,19 +1,24 @@
 use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions, 
-    Connection, Publish};
+    Connection, Publish, Queue};
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error::Error;
-use std::sync::Arc;
+use std::ops::{DerefMut, Deref};
+use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use crate::EventMessage;
 use crate::event_message::MessageHandler;
 
+// #[derive(Clone)]
 pub struct Bus {
-    cnn: RefCell::<Connection>,
+    cnn: Arc<Mutex<Connection>>,
     subs_manager: SubscriptionManager
 }
 
+#[derive(Clone)]
 pub struct SubscriptionManager {
     pub handlers: HashMap<String, Arc<dyn MessageHandler<String> + Send + Sync>>
 }
@@ -21,15 +26,15 @@ pub struct SubscriptionManager {
 impl Bus {
     pub fn new(url: String) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            cnn: RefCell::new(Connection::insecure_open(&url)?),
+            cnn: Arc::new(Mutex::new(Connection::insecure_open(&url)?)),
             subs_manager: SubscriptionManager { handlers: HashMap::new() }
         })
     }
 
-    pub fn add_subscription<T>(&mut self, event_name: String, 
+    pub fn add_subscription<T>(mut self, event_name: String, 
         handler: Arc<dyn MessageHandler<String> + Send + Sync>
     ) 
-        -> Result<(), Box<dyn Error>> where T: ?Sized {
+        -> Result<Self, Box<dyn Error>> where T: ?Sized {
         if self.subs_manager.handlers.contains_key(&event_name) {
             // self.subs_manager.handlers.get_mut(&event_name).unwrap() = &mut handler;
         } else {
@@ -37,15 +42,15 @@ impl Bus {
             // handler_list.push(handler);
             self.subs_manager.handlers.insert(event_name, handler.clone());
         }
-        Ok(())
+        Ok(self)
     }
 
     pub fn publish_event<T>(&mut self, event_name: String, message: EventMessage::<T>) 
         -> Result<(), Box<dyn Error>> where T: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
-        let mut connection = self.cnn.borrow_mut();
-        if let Ok(channel) = connection.open_channel(None) {
+
+        if let Ok(channel) = self.cnn.lock().unwrap().open_channel(None) {
             let publish_result = channel.basic_publish::<String>(
                 "".to_owned(),
                 Publish {
@@ -62,20 +67,25 @@ impl Bus {
         Ok(())
     }
 
-    pub fn subscribe_registered_events(&mut self) -> Result<(), Box<dyn Error>> {
-        for (event_name, handlers_list) in self.subs_manager.handlers.iter_mut() {
+    pub async fn subscribe_registered_events(self) -> Result<(), Box::<dyn Error>> {
+        let handlers = self.subs_manager.handlers;
+        for (event_name, handlers_list) in handlers {
             let handler = handlers_list;
             // for handler in handlers_list 
-            {
-                let queue_name = event_name.to_owned();
-                let mut connection = self.cnn.borrow_mut();
-                let channel = connection.open_channel(None)?;
-                let queue = channel.queue_declare(queue_name.to_owned(), QueueDeclareOptions {
+
+            let event = event_name.clone();
+            let connection = Arc::clone(&self.cnn);
+
+            tokio::spawn(async move {
+                let queue_name = event;
+                let channel = connection.lock().unwrap().open_channel(None).unwrap();
+                let queue: Queue = channel.queue_declare(queue_name.to_owned(), QueueDeclareOptions {
                     durable: false,
                     exclusive: false,
                     auto_delete: true,
                     ..Default::default()
-                })?;
+                }).unwrap();
+                
                 match queue.borrow().consume(ConsumerOptions::default()) {
                     Ok(consumer) => {
                         for message in consumer.receiver().iter() {
@@ -86,9 +96,9 @@ impl Bus {
     
                                     if let Ok(model) = BorshDeserialize::deserialize(&mut buf) {
                                         _ = handler.handle(model);
-                                        _ = delivery.ack(&channel);
+                                        // _ = delivery.ack(&channel);
                                     } else {
-                                        _ = delivery.nack(&channel, false);
+                                        // _ = delivery.nack(&channel, false);
                                         eprintln!("[bus] Error trying to desserialize. Check message format. Message: {:?}", str_message);
                                     }
                                 }
@@ -103,7 +113,7 @@ impl Bus {
                         eprintln!("[bus] Error trying to consume");
                     }
                 };
-            }
+            });
         }
         Ok(())
     }
