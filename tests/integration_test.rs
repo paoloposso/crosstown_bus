@@ -26,7 +26,7 @@ fn create_subscription() -> Result<(), Box<dyn Error>> {
     let subscriber = Bus::new("amqp://guest:guest@localhost:5672".to_owned())?;
     let mut publ = Bus::new("amqp://guest:guest@localhost:5672".to_owned())?;
 
-    _ = futures::executor::block_on(subscriber
+    let _ = futures::executor::block_on(subscriber
         .add_subscription::<String>("queue1".to_owned(),  Arc::new(MyCustomHandler))?
         .add_subscription::<String>("queue1".to_owned(),  Arc::new(MyCustomHandler2))?
         .subscribe_registered_events());
@@ -36,7 +36,8 @@ fn create_subscription() -> Result<(), Box<dyn Error>> {
     _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "dfsdfsd".to_owned(), payload: "Hey".to_owned() } );
     _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "23dsfd".to_owned(), payload: "Hey".to_owned() } );
     _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "343ggf".to_owned(), payload: "Hey".to_owned() } );
-    _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "444fffdf".to_owned(), payload: "Hey".to_owned() } );
+    let _ = thread::sleep(Duration::from_secs(4));
+    let _err = publ.close_connection();
 
     let _ = thread::sleep(Duration::from_secs(60));
 

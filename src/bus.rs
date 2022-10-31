@@ -2,7 +2,7 @@ use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions,
     Connection, Publish, Queue};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
-use std::cell::RefCell;
+use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -10,8 +10,10 @@ use std::thread;
 use crate::EventMessage;
 use crate::event_message::MessageHandler;
 
+pub type GenericResult = Result<(), Box<dyn Error>>;
+
 pub struct Bus {
-    pub cnn: RefCell<Connection>,
+    cnn: Cell<Connection>,
     subs_manager: SubscriptionManager
 }
 
@@ -22,7 +24,7 @@ pub struct SubscriptionManager {
 impl Bus {
     pub fn new(url: String) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            cnn: RefCell::new(Connection::insecure_open(&url)?),
+            cnn: Cell::new(Connection::insecure_open(&url)?),
             subs_manager: SubscriptionManager { handlers_map: HashMap::new() }
         })
     }
@@ -45,7 +47,6 @@ impl Bus {
         -> Result<(), Box<dyn Error>> where T: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
-
         if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
             let publish_result = channel.basic_publish::<String>(
                 "".to_owned(),
@@ -112,8 +113,8 @@ impl Bus {
         Ok(())
     }
 
-    pub fn close_connection(mut self) {
-        // let a = self.cnn.to;
-        // a.close();
+    pub fn close_connection(self) -> Result<(), Box::<dyn Error>> {
+        self.cnn.into_inner().close()?;
+        Ok(())
     }
 }
