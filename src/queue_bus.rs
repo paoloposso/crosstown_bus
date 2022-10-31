@@ -2,7 +2,7 @@ use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions,
     Connection, Publish, Queue};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
-use std::cell::{RefCell, Cell};
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
@@ -12,7 +12,7 @@ use crate::event_message::MessageHandler;
 
 pub type GenericResult = Result<(), Box<dyn Error>>;
 
-pub struct Bus {
+pub struct QueueBus {
     cnn: Cell<Connection>,
     subs_manager: SubscriptionManager
 }
@@ -21,7 +21,7 @@ pub struct SubscriptionManager {
     pub handlers_map: HashMap<String, Vec<Arc<dyn MessageHandler<String> + Send + Sync>>>,
 }
 
-impl Bus {
+impl QueueBus {
     pub fn new(url: String) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             cnn: Cell::new(Connection::insecure_open(&url)?),
@@ -44,7 +44,8 @@ impl Bus {
     }
 
     pub fn publish_event<T>(&mut self, event_name: String, message: EventMessage::<T>) 
-        -> Result<(), Box<dyn Error>> where T: BorshSerialize + BorshDeserialize {
+        -> GenericResult 
+            where T: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
         if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
@@ -64,7 +65,7 @@ impl Bus {
         Ok(())
     }
 
-    pub async fn subscribe_registered_events(self) -> Result<(), Box::<dyn Error>> {
+    pub async fn subscribe_registered_events(self) -> GenericResult {
         let handlers = self.subs_manager.handlers_map;
         let connection = Arc::new(Mutex::new(self.cnn));
         let mut tasks = vec![];
@@ -113,7 +114,7 @@ impl Bus {
         Ok(())
     }
 
-    pub fn close_connection(self) -> Result<(), Box::<dyn Error>> {
+    pub fn close_connection(self) -> GenericResult {
         self.cnn.into_inner().close()?;
         Ok(())
     }

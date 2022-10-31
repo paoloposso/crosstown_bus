@@ -1,7 +1,7 @@
 use core::time::Duration;
 use std::{sync::Arc, error::Error, thread};
 
-use crosstown_bus::{Bus, EventMessage, MessageHandler};
+use crosstown_bus::{QueueBus, EventMessage, MessageHandler};
 
 pub struct MyCustomHandler;
 
@@ -23,8 +23,8 @@ impl MessageHandler::<String> for MyCustomHandler2 {
 
 #[test]
 fn create_subscription() -> Result<(), Box<dyn Error>> {
-    let subscriber = Bus::new("amqp://guest:guest@localhost:5672".to_owned())?;
-    let mut publ = Bus::new("amqp://guest:guest@localhost:5672".to_owned())?;
+    let subscriber = QueueBus::new("amqp://guest:guest@localhost:5672".to_owned())?;
+    let mut publ = QueueBus::new("amqp://guest:guest@localhost:5672".to_owned())?;
 
     let _ = futures::executor::block_on(subscriber
         .add_subscription::<String>("queue1".to_owned(),  Arc::new(MyCustomHandler))?
