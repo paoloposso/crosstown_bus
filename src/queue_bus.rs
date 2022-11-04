@@ -7,31 +7,30 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use crate::EventMessage;
 use crate::event_message::MessageHandler;
 
 pub type GenericResult = Result<(), Box<dyn Error>>;
 
-pub struct QueueBus {
+pub struct QueueBus<T> where T : BorshSerialize + BorshDeserialize {
     cnn: Cell<Connection>,
-    subs_manager: SubscriptionManager
+    subs_manager: SubscriptionManager<T>
 }
 
-pub struct SubscriptionManager {
-    pub handlers_map: HashMap<String, Vec<Arc<dyn MessageHandler<String> + Send + Sync>>>,
+pub struct SubscriptionManager<T> {
+    pub handlers_map: HashMap<String, Vec<Arc<dyn MessageHandler<T> + Send + Sync>>>,
 }
 
-impl QueueBus {
+impl<T> QueueBus<T> where T : BorshSerialize + BorshDeserialize + Clone + 'static {
     pub fn new(url: String) -> Result<Self, Box<dyn Error>> {
-        Ok(Self {
+        Ok(QueueBus::<T> {
             cnn: Cell::new(Connection::insecure_open(&url)?),
-            subs_manager: SubscriptionManager { handlers_map: HashMap::new() }
+            subs_manager: SubscriptionManager::<T> { handlers_map: HashMap::new() }
         })
     }
 
-    pub fn add_subscription<T>(mut self, event_name: String, 
-        handler: Arc<dyn MessageHandler<String> + Send + Sync>
-    ) -> Result<Self, Box<dyn Error>> where T: ?Sized {
+    pub fn add_subscription<TH>(mut self, event_name: String, 
+        handler: Arc<dyn MessageHandler<T> + Send + Sync>
+    ) -> Result<Self, Box<dyn Error>> where TH: ?Sized + BorshDeserialize + BorshDeserialize {
         if let Some(list) = self.subs_manager.handlers_map.get_mut(&event_name) {
             list.push(handler);
         } else {
@@ -43,9 +42,9 @@ impl QueueBus {
         Ok(self)
     }
 
-    pub fn publish_event<T>(&mut self, event_name: String, message: EventMessage::<T>) 
+    pub fn publish_event<TM>(&mut self, event_name: String, message: TM)
         -> GenericResult 
-            where T: BorshSerialize + BorshDeserialize {
+            where TM: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
         if let Ok(channel) = self.cnn.get_mut().open_channel(None) {

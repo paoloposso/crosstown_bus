@@ -1,12 +1,20 @@
 use core::time::Duration;
 use std::{sync::Arc, error::Error, thread};
 
-use crosstown_bus::{QueueBus, EventMessage, MessageHandler};
+use borsh::{BorshDeserialize, BorshSerialize};
+use crosstown_bus::{QueueBus, MessageHandler};
+
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
+pub struct UserCreatedEventMessage {
+    pub user_id: String,
+    pub user_name: String,
+    pub timestamp: u64
+}
 
 pub struct MyCustomHandler;
 
-impl MessageHandler::<String> for MyCustomHandler {
-    fn handle(&self, message: Box<EventMessage<String>>) -> Result<(), String> {
+impl MessageHandler<String> for MyCustomHandler {
+    fn handle(&self, message: Box<String>) -> Result<(), String> {
         println!("Message received on handler 1: {:?}", message);
         Ok(())
     }
@@ -14,8 +22,8 @@ impl MessageHandler::<String> for MyCustomHandler {
 
 pub struct MyCustomHandler2;
 
-impl MessageHandler::<String> for MyCustomHandler2 {
-    fn handle(&self, message: Box<EventMessage<String>>) -> Result<(), String> {
+impl MessageHandler<UserCreatedEventMessage> for MyCustomHandler2 {
+    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), String> {
         println!("Message received on handler 2: {:?}", message);
         Ok(())
     }
@@ -23,19 +31,21 @@ impl MessageHandler::<String> for MyCustomHandler2 {
 
 #[test]
 fn create_subscription() -> Result<(), Box<dyn Error>> {
-    let subscriber = QueueBus::new("amqp://guest:guest@localhost:5672".to_owned())?;
-    let mut publ = QueueBus::new("amqp://guest:guest@localhost:5672".to_owned())?;
+    let subscriber = QueueBus::<String>::new("amqp://guest:guest@localhost:5672".to_owned())?;
+    let subscriber2 = QueueBus::<UserCreatedEventMessage>::new("amqp://guest:guest@localhost:5672".to_owned())?;
+    let mut publ = QueueBus::<String>::new("amqp://guest:guest@localhost:5672".to_owned())?;
 
     let _ = futures::executor::block_on(subscriber
         .add_subscription::<String>("queue1".to_owned(),  Arc::new(MyCustomHandler))?
-        .add_subscription::<String>("queue1".to_owned(),  Arc::new(MyCustomHandler2))?
+        .add_subscription::<String>("queue2".to_owned(),  Arc::new(MyCustomHandler))?
         .subscribe_registered_events());
     
-    _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "1234".to_owned(), payload: "Hey".to_owned() } );
-    _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "1dsds".to_owned(), payload: "Hey".to_owned() } );
-    _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "dfsdfsd".to_owned(), payload: "Hey".to_owned() } );
-    _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "23dsfd".to_owned(), payload: "Hey".to_owned() } );
-    _ = publ.publish_event("queue1".to_owned(),EventMessage { id: "343ggf".to_owned(), payload: "Hey".to_owned() } );
+        _ = publ.publish_event("queue1".to_owned(), "123456".to_owned());
+    _ = publ.publish_event("queue1".to_owned(), "123456".to_owned());
+    _ = publ.publish_event("queue1".to_owned(), "123456".to_owned());
+    _ = publ.publish_event("queue2".to_owned(), "queue2 aaaaa".to_owned());
+    
+    
     let _ = thread::sleep(Duration::from_secs(4));
     let _err = publ.close_connection();
 
