@@ -28,9 +28,9 @@ impl<T> QueueBus<T> where T : BorshSerialize + BorshDeserialize + Clone + 'stati
         })
     }
 
-    pub fn add_subscription<TH>(mut self, event_name: String, 
+    pub fn add_subscription(mut self, event_name: String, 
         handler: Arc<dyn MessageHandler<T> + Send + Sync>
-    ) -> Result<Self, Box<dyn Error>> where TH: ?Sized + BorshDeserialize + BorshDeserialize {
+    ) -> Result<Self, Box<dyn Error>> {
         if let Some(list) = self.subs_manager.handlers_map.get_mut(&event_name) {
             list.push(handler);
         } else {

@@ -36,8 +36,8 @@ fn create_subscription() -> Result<(), Box<dyn Error>> {
 
     let _ = futures::executor::block_on(
         subscriber
-            .add_subscription::<UserCreatedEventMessage>("queue3".to_owned(),  Arc::new(UserCreatedEventHandler))?
-            .add_subscription::<UserCreatedEventMessage>("queue4".to_owned(),  Arc::new(UserCreatedEventHandler))?
+            .add_subscription("queue3".to_owned(),  Arc::new(UserCreatedEventHandler))?
+            .add_subscription("queue4".to_owned(),  Arc::new(UserCreatedEventHandler))?
             .subscribe_registered_events()
     );
     
