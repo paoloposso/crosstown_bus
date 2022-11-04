@@ -11,7 +11,7 @@ use crate::event_message::MessageHandler;
 
 pub type GenericResult = Result<(), Box<dyn Error>>;
 
-pub struct QueueBus<T> where T : BorshSerialize + BorshDeserialize {
+pub struct QueueSubscriber<T> where T : BorshSerialize + BorshDeserialize {
     cnn: Cell<Connection>,
     subs_manager: SubscriptionManager<T>
 }
@@ -20,9 +20,9 @@ pub struct SubscriptionManager<T> {
     pub handlers_map: HashMap<String, Vec<Arc<dyn MessageHandler<T> + Send + Sync>>>,
 }
 
-impl<T> QueueBus<T> where T : BorshSerialize + BorshDeserialize + Clone + 'static {
+impl<T> QueueSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clone + 'static {
     pub fn new(url: String) -> Result<Self, Box<dyn Error>> {
-        Ok(QueueBus::<T> {
+        Ok(QueueSubscriber::<T> {
             cnn: Cell::new(Connection::insecure_open(&url)?),
             subs_manager: SubscriptionManager::<T> { handlers_map: HashMap::new() }
         })
@@ -40,28 +40,6 @@ impl<T> QueueBus<T> where T : BorshSerialize + BorshDeserialize + Clone + 'stati
         }
         
         Ok(self)
-    }
-
-    pub fn publish_event<TM>(&mut self, event_name: String, message: TM)
-        -> GenericResult 
-            where TM: BorshSerialize + BorshDeserialize {
-        let mut buffer = Vec::new();
-        message.serialize(&mut buffer)?;
-        if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
-            let publish_result = channel.basic_publish::<String>(
-                "".to_owned(),
-                Publish {
-                    body: &buffer,
-                    routing_key: event_name.to_owned(),
-                    mandatory: false,
-                    immediate: false,
-                    properties: Default::default(),
-                });
-            if publish_result.is_err() {
-                return Err(Box::new(publish_result.unwrap_err()));
-            }
-        }
-        Ok(())
     }
 
     pub async fn subscribe_registered_events(self) -> GenericResult {

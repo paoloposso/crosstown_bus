@@ -2,7 +2,7 @@ use core::time::Duration;
 use std::{sync::Arc, error::Error, thread};
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use crosstown_bus::{QueueBus, MessageHandler};
+use crosstown_bus::{QueuePublisher, QueueSubscriber, MessageHandler};
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct UserCreatedEventMessage {
@@ -31,8 +31,8 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
 
 #[test]
 fn create_subscription() -> Result<(), Box<dyn Error>> {
-    let subscriber = QueueBus::<UserCreatedEventMessage>::new("amqp://guest:guest@localhost:5672".to_owned())?;
-    let mut publ = QueueBus::<String>::new("amqp://guest:guest@localhost:5672".to_owned())?;
+    let subscriber = QueueSubscriber::<UserCreatedEventMessage>::new("amqp://guest:guest@localhost:5672".to_owned())?;
+    // let mut publ = QueuePublisher::<String>::new("amqp://guest:guest@localhost:5672".to_owned())?;
 
     let _ = futures::executor::block_on(
         subscriber
@@ -41,11 +41,11 @@ fn create_subscription() -> Result<(), Box<dyn Error>> {
             .subscribe_registered_events()
     );
     
-    _ = publ.publish_event("queue3".to_owned(), UserCreatedEventMessage { user_id: "11111".to_owned(), user_name: "paolo".to_owned(), timestamp: 3943043274 });
-    _ = publ.publish_event("queue4".to_owned(), UserCreatedEventMessage { user_id: "22222".to_owned(), user_name: "paolo".to_owned(), timestamp: 3943043274 });
+    // _ = publ.publish_event("queue3".to_owned(), UserCreatedEventMessage { user_id: "11111".to_owned(), user_name: "paolo".to_owned(), timestamp: 3943043274 });
+    // _ = publ.publish_event("queue4".to_owned(), UserCreatedEventMessage { user_id: "22222".to_owned(), user_name: "paolo".to_owned(), timestamp: 3943043274 });
     
     let _ = thread::sleep(Duration::from_secs(4));
-    let _err = publ.close_connection();
+    // let _err = publ.close_connection();
 
     let _ = thread::sleep(Duration::from_secs(60));
 
