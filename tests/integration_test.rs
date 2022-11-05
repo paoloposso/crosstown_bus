@@ -46,5 +46,7 @@ fn create_subscription() -> Result<(), Box<dyn Error>> {
             user_name: "Dusty Hill".to_owned()
         });
 
+    _ = publisher.close_connection();
+
     Ok(())
 }
