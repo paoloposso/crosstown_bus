@@ -1,8 +1,7 @@
-use std::{cell::{Cell, RefCell}, error::Error, sync::{Mutex, Arc}, thread};
+use std::{cell::RefCell, error::Error, sync::{Mutex, Arc}, thread};
 
 use amiquip::{Connection, Publish, ConsumerOptions, ConsumerMessage, QueueDeclareOptions, Queue};
 use borsh::{BorshSerialize, BorshDeserialize};
-use tokio::runtime::Handle;
 
 use crate::MessageHandler;
 
