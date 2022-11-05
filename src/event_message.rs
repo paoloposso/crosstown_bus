@@ -1,5 +1,3 @@
-use std::default;
-
 use borsh::{BorshDeserialize, BorshSerialize};
 
 pub trait MessageHandler<T> {

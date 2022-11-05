@@ -1,14 +1,12 @@
-use core::time::Duration;
-use std::{sync::Arc, error::Error, thread};
+use std::error::Error;
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use crosstown_bus::{QueuePublisher, QueueSubscriber, MessageHandler};
+use crosstown_bus::{MessageHandler, CrosstownBus};
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct UserCreatedEventMessage {
     pub user_id: String,
-    pub user_name: String,
-    pub timestamp: u64
+    pub user_name: String
 }
 
 pub struct MyCustomHandler;
@@ -31,23 +29,22 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
 
 #[test]
 fn create_subscription() -> Result<(), Box<dyn Error>> {
-    let subscriber = QueueSubscriber::<UserCreatedEventMessage>::new("amqp://guest:guest@localhost:5672".to_owned())?;
-    // let mut publ = QueuePublisher::<String>::new("amqp://guest:guest@localhost:5672".to_owned())?;
+    let subscriber = CrosstownBus::new_queue_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 
-    let _ = futures::executor::block_on(
-        subscriber
-            .add_subscription("queue3".to_owned(),  Arc::new(UserCreatedEventHandler))?
-            .add_subscription("queue4".to_owned(),  Arc::new(UserCreatedEventHandler))?
-            .subscribe_registered_events()
-    );
-    
-    // _ = publ.publish_event("queue3".to_owned(), UserCreatedEventMessage { user_id: "11111".to_owned(), user_name: "paolo".to_owned(), timestamp: 3943043274 });
-    // _ = publ.publish_event("queue4".to_owned(), UserCreatedEventMessage { user_id: "22222".to_owned(), user_name: "paolo".to_owned(), timestamp: 3943043274 });
-    
-    let _ = thread::sleep(Duration::from_secs(4));
-    // let _err = publ.close_connection();
+    _ = futures::executor::block_on(subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler));
 
-    let _ = thread::sleep(Duration::from_secs(60));
+    let mut publisher = CrosstownBus::new_queue_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
+    _ = publisher.publish_event("user_created".to_owned(), 
+        UserCreatedEventMessage {
+            user_id: "asdf".to_owned(),
+            user_name: "Billy Gibbons".to_owned()
+        });
+
+    _ = publisher.publish_event("user_created".to_owned(), 
+        UserCreatedEventMessage {
+            user_id: "1234".to_owned(),
+            user_name: "Dusty Hill".to_owned()
+        });
 
     Ok(())
 }

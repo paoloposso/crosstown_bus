@@ -1,5 +1,5 @@
 use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions, 
-    Connection, Publish, Queue};
+    Connection, Queue};
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::borrow::Borrow;
 use std::cell::Cell;
