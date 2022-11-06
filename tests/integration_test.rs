@@ -12,7 +12,7 @@ pub struct UserCreatedEventMessage {
 pub struct MyCustomHandler;
 
 impl MessageHandler<String> for MyCustomHandler {
-    fn handle(&self, message: Box<String>) -> Result<(), String> {
+    fn handle(&self, message: Box<String>) -> Result<(), Box::<dyn Error>> {
         println!("Message received on handler 1: {:?}", message);
         Ok(())
     }
@@ -21,7 +21,7 @@ impl MessageHandler<String> for MyCustomHandler {
 pub struct UserCreatedEventHandler;
 
 impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
-    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), String> {
+    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), Box::<dyn Error>> {
         println!("Message received on User Created Handler: {:?}", message);
         Ok(())
     }
@@ -31,7 +31,7 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
 fn create_subscription() -> Result<(), Box<dyn Error>> {
     let subscriber = CrosstownBus::new_queue_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 
-    _ = futures::executor::block_on(subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler));
+    _ = futures::executor::block_on(subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler, None));
 
     let mut publisher = CrosstownBus::new_queue_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
     _ = publisher.publish_event("user_created".to_owned(), 
