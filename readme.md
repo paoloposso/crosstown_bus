@@ -3,9 +3,6 @@ Flexible and easy to configure Event Bus for event-driven systems in Rust.
 
 Create your own structs and integrate your services / microservices by sending strongly typed payloads.
 
-# Supports
-- RabbitMQ
-
 # Examples
 
 ## Creating a Handler
@@ -17,12 +14,20 @@ Your Message Handler must implement the _trait_ MessageHandler, and inform the t
 struct UserCreatedEventHandler;
 
 impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
-    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), String> {
+    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), HandleError> {
+        if message.user_id == "100".to_owned() {
+            return Err(HandleError::new("ID 100 rejected".to_owned(), true));
+        }
         println!("Message received on User Created Handler: {:?}", message);
         Ok(())
     }
 }
 ```
+This method will receive the messages with the type that was configured, from the queue the subscriber will be listening.
+
+The **HandleError** struct is used to inform that the process didn't ocurr corretly, though the message was received.
+
+With the Error object you can also tell the Bus whether this message should be requeued in order to try the process again.
 
 ## Creating an Event Message
 Notice that the Message type we want to send and receive between services is **UserCreatedEventMessage**.
@@ -64,8 +69,10 @@ subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler).a
 Note that the _subscribe_event_ method in async, therefore, I'm calling _await_ when invoking it.
 Another option is to block it, by using the following notation:
 ```
-futures::executor::block_on(subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler));
+futures::executor::block_on(subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler, None));
 ```
+
+The parameter queue_properties is optional and holds specific queue configurations, such as whether the queue should be auto deleted and durable.
 
 ## Publishing / sending an Event Message
 To create the publisher the process is pretty much the same, only a different creation method.

@@ -10,6 +10,7 @@ use std::{error::Error, cell::RefCell};
 use amiquip::Connection;
 use queue_bus::{QueuePublisher, QueueSubscriber};
 pub use message_handler::MessageHandler;
+pub use message_handler::HandleError;
 
 pub struct CrosstownBus();
 

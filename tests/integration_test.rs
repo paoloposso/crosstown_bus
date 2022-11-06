@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use crosstown_bus::{MessageHandler, CrosstownBus};
+use crosstown_bus::{MessageHandler, CrosstownBus, HandleError};
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
 pub struct UserCreatedEventMessage {
@@ -12,7 +12,7 @@ pub struct UserCreatedEventMessage {
 pub struct MyCustomHandler;
 
 impl MessageHandler<String> for MyCustomHandler {
-    fn handle(&self, message: Box<String>) -> Result<(), Box::<dyn Error>> {
+    fn handle(&self, message: Box<String>) -> Result<(), HandleError> {
         println!("Message received on handler 1: {:?}", message);
         Ok(())
     }
@@ -21,7 +21,10 @@ impl MessageHandler<String> for MyCustomHandler {
 pub struct UserCreatedEventHandler;
 
 impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
-    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), Box::<dyn Error>> {
+    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), HandleError> {
+        if message.user_id == "100".to_owned() {
+            return Err(HandleError::new("ID 100 rejected".to_owned(), true));
+        }
         println!("Message received on User Created Handler: {:?}", message);
         Ok(())
     }
@@ -43,6 +46,12 @@ fn create_subscription() -> Result<(), Box<dyn Error>> {
     _ = publisher.publish_event("user_created".to_owned(), 
         UserCreatedEventMessage {
             user_id: "1234".to_owned(),
+            user_name: "Dusty Hill".to_owned()
+        });
+
+    _ = publisher.publish_event("user_created".to_owned(), 
+        UserCreatedEventMessage {
+            user_id: "100".to_owned(),
             user_name: "Dusty Hill".to_owned()
         });
 

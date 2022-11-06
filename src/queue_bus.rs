@@ -54,8 +54,12 @@ impl QueueSubscriber {
                                         let mut buf = str_message.as_bytes();
     
                                         if let Ok(model) = BorshDeserialize::deserialize(&mut buf) {
-                                            let handle_result = handler.handle(model);
-                                            _ = delivery.ack(&channel);
+                                            if let Err(err) = handler.handle(model) {
+                                                println!("{err}");
+                                                _ = delivery.nack(&channel, err.requeue);
+                                            } else {
+                                                _ = delivery.ack(&channel);
+                                            }
                                         } else {
                                             _ = delivery.nack(&channel, false);
                                             eprintln!("[crosstown_bus] Error trying to desserialize. Check message format. Message: {:?}", str_message);
