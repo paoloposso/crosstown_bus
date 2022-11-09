@@ -1,6 +1,6 @@
 [package]
 name = "crosstown_bus"
-version = "0.4.4"
+version = "0.4.5"
 edition = "2021"
 authors = ["paoloposso <pvictorsys@gmail.com>"]
 readme = "README.md"
