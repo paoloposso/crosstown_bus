@@ -64,7 +64,7 @@ After that, call the subscribe_event method, passing the event name / queue name
 If the queue was not created on RabbitMQ, it will be created now, when you subscribe to it.
 
 ```
-subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler).await;
+subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler, None).await;
 ```
 Note that the _subscribe_event_ method in async, therefore, I'm calling _await_ when invoking it.
 Another option is to block it, by using the following notation:
