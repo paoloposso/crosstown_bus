@@ -26,7 +26,7 @@ pub struct QueueSubscriber {
 impl QueueSubscriber {
     pub async fn subscribe_event<T>(self, event_name: String, 
         event_handler: impl MessageHandler<T> + Send + Sync + 'static,
-        queue_properties: Option<QueueProperties>) -> GenericResult
+        queue_properties: QueueProperties) -> GenericResult
         where T : BorshDeserialize + BorshSerialize + Clone + 'static {
 
         let connection = Arc::new(Mutex::new(self.cnn));
@@ -38,10 +38,8 @@ impl QueueSubscriber {
             let channel = cnn.lock().unwrap().get_mut().open_channel(None).unwrap();
 
             let mut queue_options = QueueDeclareOptions::default();
-            if let Some(props) = queue_properties {
-                queue_options.auto_delete = props.auto_delete;
-                queue_options.durable = props.durable;
-            }
+            queue_options.auto_delete = queue_properties.auto_delete;
+            queue_options.durable = queue_properties.durable;
 
             match channel.queue_declare(queue_name, queue_options) {
                 Ok(queue) => {

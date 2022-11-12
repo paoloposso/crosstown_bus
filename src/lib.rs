@@ -11,6 +11,7 @@ use amiquip::Connection;
 use queue_bus::{QueuePublisher, QueueSubscriber};
 pub use message_handler::MessageHandler;
 pub use message_handler::HandleError;
+pub use queue_bus::QueueProperties;
 
 pub struct CrosstownBus();
 
@@ -20,6 +21,7 @@ impl CrosstownBus {
             cnn: RefCell::new(Connection::insecure_open(&url)?)
         })
     }
+    
     pub fn new_queue_publisher(url: String) -> Result<QueuePublisher, Box<dyn Error>> {
         Ok(QueuePublisher {
             cnn: RefCell::new(Connection::insecure_open(&url)?)
