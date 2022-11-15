@@ -13,6 +13,7 @@ pub struct QueueProperties {
     pub auto_delete: bool,
     /// if set to true, queue will survive when server restarts
     pub durable: bool,
+    pub use_dead_letter: bool
 }
 
 pub struct QueuePublisher {
