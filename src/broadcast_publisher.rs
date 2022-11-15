@@ -1,23 +1,25 @@
-use std::cell::Cell;
+use std::{cell::{Cell, RefCell}, error::Error};
 
 use amiquip::{Connection, Publish};
 use borsh::{BorshSerialize, BorshDeserialize};
 
-use crate::queue_subscriber::GenericResult;
+use crate::tools::helpers::{GenericResult, create_exchange, get_exchange_name};
 
-pub struct QueuePublisher {
-    cnn: Cell<Connection>
+pub struct BroadcastPublisher {
+    cnn: RefCell<Connection>
 }
 
-impl QueuePublisher {
+impl BroadcastPublisher {
     pub fn publish_event<TM>(&mut self, event_name: String, message: TM)
         -> GenericResult 
             where TM: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
         if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
+            let exchange_name = get_exchange_name(&event_name);
+            let _ = create_exchange(&exchange_name, "fanout".to_owned(), &channel);
             let publish_result = channel.basic_publish::<String>(
-                "".to_owned(),
+                exchange_name.to_owned(),
                 Publish {
                     body: &buffer,
                     routing_key: event_name.to_owned(),

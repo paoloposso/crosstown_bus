@@ -34,8 +34,8 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
 fn create_subscription() -> Result<(), Box<dyn Error>> {
     let subscriber = CrosstownBus::new_queue_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 
-    _ = futures::executor::block_on(subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler, 
-        QueueProperties { auto_delete: false, durable: false, use_dead_letter: true }));
+    _ = subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler, 
+        QueueProperties { auto_delete: false, durable: false, use_dead_letter: true });
 
     let mut publisher = CrosstownBus::new_queue_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
     _ = publisher.publish_event("user_created".to_owned(), 

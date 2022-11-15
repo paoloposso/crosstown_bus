@@ -3,8 +3,6 @@ Flexible and easy to configure Event Bus for event-driven systems in Rust.
 
 Create your own structs and integrate your services / microservices by sending strongly typed payloads.
 
-# Examples
-
 ## Creating a Handler
 A message received from the queue will be sent to a Message Handler.
 

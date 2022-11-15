@@ -1,11 +1,9 @@
 use std::{cell::RefCell, error::Error, sync::{Mutex, Arc}, thread, collections::BTreeMap};
 
-use amiquip::{Connection, Publish, ConsumerOptions, ConsumerMessage, QueueDeclareOptions, ExchangeDeclareOptions};
+use amiquip::{Connection, Publish, ConsumerOptions, ConsumerMessage, QueueDeclareOptions};
 use borsh::{BorshSerialize, BorshDeserialize};
 
-use crate::MessageHandler;
-
-pub type GenericResult = Result<(), Box<dyn Error>>;
+use crate::{MessageHandler, tools::helpers::{create_dead_letter_policy, create_exchange, GenericResult}};
 
 #[derive(Default)]
 pub struct QueueProperties {
@@ -25,7 +23,7 @@ pub struct QueueSubscriber {
 }
 
 impl QueueSubscriber {
-    pub async fn subscribe_event<T>(self, event_name: String, 
+    pub fn subscribe_event<T>(self, event_name: String, 
         event_handler: impl MessageHandler<T> + Send + Sync + 'static,
         queue_properties: QueueProperties) -> GenericResult
         where T : BorshDeserialize + BorshSerialize + Clone + 'static {
@@ -49,8 +47,7 @@ impl QueueSubscriber {
 
             match channel.queue_declare(&queue_name, queue_options) {
                 Ok(queue) => {
-                    let exchange_name = get_exchange_name(&queue_name);
-                    let exchange = channel.exchange_declare(amiquip::ExchangeType::Direct, exchange_name, ExchangeDeclareOptions::default()).unwrap();
+                    let exchange = create_exchange(&queue_name, "direct".to_owned(), &channel);
 
                     _ = queue.bind(&exchange, &queue_name, BTreeMap::default());
 
@@ -96,39 +93,16 @@ impl QueueSubscriber {
     }
 }
 
-fn create_dead_letter_policy(queue_name: String, channel: &amiquip::Channel) -> Result<String, Box::<dyn Error>>{
-    let dl_ex_name = get_dead_letter_ex_name(&queue_name);
-    let dl_exchange = channel.exchange_declare(amiquip::ExchangeType::Fanout, dl_ex_name.to_owned(), ExchangeDeclareOptions::default())?;
-    let mut dl_queue_name = queue_name.to_owned();
-    dl_queue_name.push_str(&"_dead_letter");
-    let dl_queue = channel.queue_declare(dl_queue_name, QueueDeclareOptions { durable: true, exclusive: false, auto_delete: false, arguments: BTreeMap::default() })?;
-    _ = dl_queue.bind(&dl_exchange, "".to_owned(), BTreeMap::default());
 
-    Ok(dl_ex_name)
-}
-
-fn get_exchange_name(queue_name: &String) -> String {
-    let mut exchange_name = queue_name.to_owned();
-    exchange_name.push_str("_exchange");
-    exchange_name
-}
-
-fn get_dead_letter_ex_name(queue_name: &String) -> String {
-    let mut exchange_name = queue_name.to_owned();
-    exchange_name.push_str("_exchange_dead_letter");
-    exchange_name
-}
 
 impl QueuePublisher {
-    pub fn publish_event<T>(&mut self, event_name: String, message: T)
-        -> GenericResult 
-            where T: BorshSerialize + BorshDeserialize {
-
-        let exchange_name = get_exchange_name(&event_name);
-
+    pub fn publish_event<T>(&mut self, event_name: String, message: T) -> GenericResult 
+                                            where T: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
         if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
+            let exchange_name = crate::tools::helpers::get_exchange_name(&event_name);
+            let _ = create_exchange(&exchange_name, "direct".to_owned(), &channel);
             let publish_result = channel.basic_publish::<String>(
                 exchange_name,
                 Publish {

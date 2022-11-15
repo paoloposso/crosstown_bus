@@ -7,22 +7,23 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use crate::event_message::MessageHandler;
+
+use crate::MessageHandler;
 
 pub type GenericResult = Result<(), Box<dyn Error>>;
-
-pub struct QueueSubscriber<T> where T : BorshSerialize + BorshDeserialize {
-    cnn: Cell<Connection>,
-    subs_manager: SubscriptionManager<T>
-}
 
 pub struct SubscriptionManager<T> {
     pub handlers_map: HashMap<String, Vec<Arc<dyn MessageHandler<T> + Send + Sync>>>,
 }
 
-impl<T> QueueSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clone + 'static {
+pub struct BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize {
+    cnn: Cell<Connection>,
+    subs_manager: SubscriptionManager<T>
+}
+
+impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clone + 'static {
     pub fn new(url: String) -> Result<Self, Box<dyn Error>> {
-        Ok(QueueSubscriber::<T> {
+        Ok(BroadcastSubscriber::<T> {
             cnn: Cell::new(Connection::insecure_open(&url)?),
             subs_manager: SubscriptionManager::<T> { handlers_map: HashMap::new() }
         })
@@ -42,7 +43,7 @@ impl<T> QueueSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clone +
         Ok(self)
     }
 
-    pub async fn subscribe_registered_events(self) -> GenericResult {
+    pub async fn subscribe(self) -> GenericResult {
         let handlers = self.subs_manager.handlers_map;
         let connection = Arc::new(Mutex::new(self.cnn));
         let mut tasks = vec![];
@@ -57,7 +58,9 @@ impl<T> QueueSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clone +
                         exclusive: false,
                         auto_delete: false,
                         ..Default::default()
-                    }).unwrap();
+                    })?;
+                    let exchange = create_exchange(get_exchange_name(&event_name), "fanout".to_owned(), &channel);
+                    _ = queue.bind(&exchange, &queue_name, BTreeMap::default());
                     match queue.borrow().consume(ConsumerOptions::default()) {
                         Ok(consumer) => {
                             for message in consumer.receiver().iter() {

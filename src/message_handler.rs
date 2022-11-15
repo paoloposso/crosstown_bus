@@ -8,13 +8,6 @@ pub trait MessageHandler<T> {
         where T: Clone + BorshDeserialize + BorshSerialize + 'static;
 }
 
-#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
-pub struct IntegrationEventMessage {
-    pub event_id: String,
-    pub payload: String,
-    pub timestamp: u64
-}
-
 #[derive(Debug)]
 pub struct HandleError {
     details: String,
