@@ -1,6 +1,6 @@
-use std::{cell::RefCell, error::Error, sync::{Mutex, Arc}, thread};
+use std::{cell::RefCell, error::Error, sync::{Mutex, Arc}, thread, collections::BTreeMap};
 
-use amiquip::{Connection, Publish, ConsumerOptions, ConsumerMessage, QueueDeclareOptions};
+use amiquip::{Connection, Publish, ConsumerOptions, ConsumerMessage, QueueDeclareOptions, ExchangeDeclareOptions};
 use borsh::{BorshSerialize, BorshDeserialize};
 
 use crate::MessageHandler;
@@ -42,8 +42,18 @@ impl QueueSubscriber {
             queue_options.auto_delete = queue_properties.auto_delete;
             queue_options.durable = queue_properties.durable;
 
-            match channel.queue_declare(queue_name, queue_options) {
+            if queue_properties.use_dead_letter {
+                let dl_ex_name = create_dead_letter_policy(queue_name.to_owned(), &channel).unwrap();
+                queue_options.arguments.insert("x-dead-letter-exchange".to_owned(), amiquip::AmqpValue::LongString(dl_ex_name));
+            }
+
+            match channel.queue_declare(&queue_name, queue_options) {
                 Ok(queue) => {
+                    let exchange_name = get_exchange_name(&queue_name);
+                    let exchange = channel.exchange_declare(amiquip::ExchangeType::Direct, exchange_name, ExchangeDeclareOptions::default()).unwrap();
+
+                    _ = queue.bind(&exchange, &queue_name, BTreeMap::default());
+
                     match queue.consume(ConsumerOptions::default()) {
                         Ok(consumer) => {
                             for message in consumer.receiver().iter() {
@@ -86,15 +96,41 @@ impl QueueSubscriber {
     }
 }
 
+fn create_dead_letter_policy(queue_name: String, channel: &amiquip::Channel) -> Result<String, Box::<dyn Error>>{
+    let dl_ex_name = get_dead_letter_ex_name(&queue_name);
+    let dl_exchange = channel.exchange_declare(amiquip::ExchangeType::Fanout, dl_ex_name.to_owned(), ExchangeDeclareOptions::default())?;
+    let mut dl_queue_name = queue_name.to_owned();
+    dl_queue_name.push_str(&"_dead_letter");
+    let dl_queue = channel.queue_declare(dl_queue_name, QueueDeclareOptions { durable: true, exclusive: false, auto_delete: false, arguments: BTreeMap::default() })?;
+    _ = dl_queue.bind(&dl_exchange, "".to_owned(), BTreeMap::default());
+
+    Ok(dl_ex_name)
+}
+
+fn get_exchange_name(queue_name: &String) -> String {
+    let mut exchange_name = queue_name.to_owned();
+    exchange_name.push_str("_exchange");
+    exchange_name
+}
+
+fn get_dead_letter_ex_name(queue_name: &String) -> String {
+    let mut exchange_name = queue_name.to_owned();
+    exchange_name.push_str("_exchange_dead_letter");
+    exchange_name
+}
+
 impl QueuePublisher {
     pub fn publish_event<T>(&mut self, event_name: String, message: T)
         -> GenericResult 
             where T: BorshSerialize + BorshDeserialize {
+
+        let exchange_name = get_exchange_name(&event_name);
+
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
         if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
             let publish_result = channel.basic_publish::<String>(
-                "".to_owned(),
+                exchange_name,
                 Publish {
                     body: &buffer,
                     routing_key: event_name.to_owned(),

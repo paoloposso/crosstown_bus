@@ -23,7 +23,7 @@ pub struct UserCreatedEventHandler;
 impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
     fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), HandleError> {
         if message.user_id == "100".to_owned() {
-            return Err(HandleError::new("ID 100 rejected".to_owned(), true));
+            return Err(HandleError::new("ID 100 rejected".to_owned(), false));
         }
         println!("Message received on User Created Handler: {:?}", message);
         Ok(())
@@ -35,7 +35,7 @@ fn create_subscription() -> Result<(), Box<dyn Error>> {
     let subscriber = CrosstownBus::new_queue_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 
     _ = futures::executor::block_on(subscriber.subscribe_event("user_created".to_owned(), UserCreatedEventHandler, 
-        QueueProperties { auto_delete: true, durable: false, use_dead_letter: true }));
+        QueueProperties { auto_delete: false, durable: false, use_dead_letter: true }));
 
     let mut publisher = CrosstownBus::new_queue_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
     _ = publisher.publish_event("user_created".to_owned(), 
