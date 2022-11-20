@@ -1,13 +1,13 @@
-use std::{cell::{Cell, RefCell}, error::Error};
+use std::{cell::{RefCell}};
 
 use amiquip::{Connection, Publish};
 use borsh::{BorshSerialize, BorshDeserialize};
 
 use crate::tools::helpers::{GenericResult, create_exchange, get_exchange_name};
 
-pub struct BroadcastPublisher {
-    cnn: RefCell<Connection>
-}
+pub struct BroadcastPublisher(
+    RefCell<Connection>
+);
 
 impl BroadcastPublisher {
     pub fn publish_event<TM>(&mut self, event_name: String, message: TM)
@@ -15,7 +15,7 @@ impl BroadcastPublisher {
             where TM: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
-        if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
+        if let Ok(channel) = self.0.get_mut().open_channel(None) {
             let exchange_name = get_exchange_name(&event_name);
             let _ = create_exchange(&exchange_name, "fanout".to_owned(), &channel);
             let publish_result = channel.basic_publish::<String>(

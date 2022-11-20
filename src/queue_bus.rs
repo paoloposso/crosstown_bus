@@ -1,18 +1,9 @@
-use std::{cell::RefCell, error::Error, sync::{Mutex, Arc}, thread, collections::BTreeMap};
+use std::{cell::RefCell, sync::{Mutex, Arc}, thread, collections::BTreeMap};
 
 use amiquip::{Connection, Publish, ConsumerOptions, ConsumerMessage, QueueDeclareOptions};
 use borsh::{BorshSerialize, BorshDeserialize};
 
-use crate::{MessageHandler, tools::helpers::{create_dead_letter_policy, create_exchange, GenericResult}};
-
-#[derive(Default)]
-pub struct QueueProperties {
-    /// queue will be deleted from RabbitMQ when the last consumer disconnects
-    pub auto_delete: bool,
-    /// if set to true, queue will survive when server restarts
-    pub durable: bool,
-    pub use_dead_letter: bool
-}
+use crate::{MessageHandler, tools::helpers::{create_dead_letter_policy, create_exchange, GenericResult}, message_handler::send_message_to_handler, QueueProperties};
 
 pub struct QueuePublisher {
     pub(crate) cnn: RefCell<Connection>
@@ -23,7 +14,7 @@ pub struct QueueSubscriber {
 }
 
 impl QueueSubscriber {
-    pub fn subscribe_event<T>(self, event_name: String, 
+    pub fn listen<T>(self, event_name: String, 
         event_handler: impl MessageHandler<T> + Send + Sync + 'static,
         queue_properties: QueueProperties) -> GenericResult
         where T : BorshDeserialize + BorshSerialize + Clone + 'static {
@@ -56,20 +47,7 @@ impl QueueSubscriber {
                             for message in consumer.receiver().iter() {
                                 match message {
                                     ConsumerMessage::Delivery(delivery) => {
-                                        let str_message = String::from_utf8_lossy(&delivery.body).to_string();
-                                        let mut buf = str_message.as_bytes();
-    
-                                        if let Ok(model) = BorshDeserialize::deserialize(&mut buf) {
-                                            if let Err(err) = handler.handle(model) {
-                                                println!("{err}");
-                                                _ = delivery.nack(&channel, err.requeue);
-                                            } else {
-                                                _ = delivery.ack(&channel);
-                                            }
-                                        } else {
-                                            _ = delivery.nack(&channel, false);
-                                            eprintln!("[crosstown_bus] Error trying to desserialize. Check message format. Message: {:?}", str_message);
-                                        }
+                                        send_message_to_handler(delivery, &handler, &channel);
                                     }
                                     other => {
                                         eprintln!("[crosstown_bus] Consumer ended: {:?}", other);
@@ -92,8 +70,6 @@ impl QueueSubscriber {
         Ok(())
     }
 }
-
-
 
 impl QueuePublisher {
     pub fn publish_event<T>(&mut self, event_name: String, message: T) -> GenericResult 
