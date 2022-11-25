@@ -32,7 +32,7 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
 
 #[test]
 fn send_receive() -> Result<(), Box<dyn Error>> {
-    let subscriber = CrosstownBus::new_queue_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
+    let subscriber = CrosstownBus::new_queue_listener("amqp://guest:guest@localhost:5672".to_owned())?;
 
     _ = subscriber.listen("user_created".to_owned(), UserCreatedEventHandler, 
         QueueProperties { auto_delete: false, durable: false, use_dead_letter: true });

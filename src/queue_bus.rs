@@ -9,11 +9,11 @@ pub struct QueuePublisher {
     pub(crate) cnn: RefCell<Connection>
 }
 
-pub struct QueueSubscriber {
+pub struct QueueListener {
     pub(crate) cnn: RefCell<Connection>
 }
 
-impl QueueSubscriber {
+impl QueueListener {
     pub fn listen<T>(self, event_name: String, 
         event_handler: impl MessageHandler<T> + Send + Sync + 'static,
         queue_properties: QueueProperties) -> GenericResult
