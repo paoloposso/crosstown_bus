@@ -6,7 +6,7 @@ use borsh::{BorshSerialize, BorshDeserialize};
 use crate::tools::helpers::{GenericResult, create_exchange, get_exchange_name};
 
 pub struct BroadcastPublisher(
-    RefCell<Connection>
+    pub RefCell<Connection>
 );
 
 impl BroadcastPublisher {

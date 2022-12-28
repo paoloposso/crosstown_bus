@@ -18,8 +18,8 @@ pub struct SubscriptionManager<T> {
 }
 
 pub struct BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize {
-    cnn: Cell<Connection>,
-    subs_manager: SubscriptionManager<T>
+    pub(crate) cnn: Cell<Connection>,
+    pub(crate) subs_manager: SubscriptionManager<T>
 }
 
 impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clone + 'static {
@@ -30,10 +30,10 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
         })
     }
 
-    pub fn add_subscription(mut self, event_name: String, 
+    pub fn add_subscription(&mut self, event_name: String, 
         handler: Arc<dyn MessageHandler<T> + Send + Sync>,
         queue_properties: QueueProperties
-    ) -> Result<Self, Box<dyn Error>> {        
+    ) -> Result<&Self, Box<dyn Error>> {        
         if let Some(list) = self.subs_manager.handlers_map.get_mut(&event_name) {
             list.push(handler);
         } else {
@@ -44,17 +44,17 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
         Ok(self)
     }
 
-    pub async fn subscribe_registered_events(self) -> GenericResult {
+    pub fn subscribe_registered_events(self) -> GenericResult {
         let handlers = self.subs_manager.handlers_map;
         let connection = Arc::new(Mutex::new(self.cnn));
-        let mut tasks = vec![];
+        // let mut tasks = vec![];
         for (event_name, handlers_list) in handlers {
 
             for handler in handlers_list  {
                 let cnn = Arc::clone(&connection);
                 let event_arc =  Arc::clone(&event_name);
 
-                tasks.push(thread::spawn(move || {
+                thread::spawn(move || {
                     let event = event_arc.borrow();
                     let channel = cnn.lock().unwrap().get_mut().open_channel(None).unwrap();
                     let queue: Queue = channel.queue_declare(event, QueueDeclareOptions {
@@ -84,7 +84,7 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
                             eprintln!("[bus] Error trying to consume");
                         }
                     };
-                }));
+                });
             }
         }
         Ok(())

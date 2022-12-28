@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, sync::Arc};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use crosstown_bus::{MessageHandler, CrosstownBus, HandleError, QueueProperties};
@@ -58,5 +58,35 @@ fn send_receive() -> Result<(), Box<dyn Error>> {
 
     _ = publisher.close_connection();
 
+    Ok(())
+}
+
+#[test]
+fn broadcast() -> Result<(), Box<dyn Error>> {
+    let mut subscriber = CrosstownBus::new_broadcast_subscriber::<UserCreatedEventMessage>("amqp://guest:guest@localhost:5672".to_owned())?;
+
+    _ = subscriber.add_subscription("user_created".to_owned(), Arc::new(UserCreatedEventHandler), 
+        QueueProperties { auto_delete: false, durable: false, use_dead_letter: true });
+
+    _ = subscriber.subscribe_registered_events();
+
+    let mut publisher = CrosstownBus::new_broadcast_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
+    _ = publisher.publish_event("user_created".to_owned(), 
+        UserCreatedEventMessage {
+            user_id: "asdf".to_owned(),
+            user_name: "Billy Gibbons".to_owned()
+        });
+
+    _ = publisher.publish_event("user_created".to_owned(), 
+        UserCreatedEventMessage {
+            user_id: "1234".to_owned(),
+            user_name: "Dusty Hill".to_owned()
+        });
+
+    _ = publisher.publish_event("user_created".to_owned(), 
+        UserCreatedEventMessage {
+            user_id: "100".to_owned(),
+            user_name: "Dusty Hill".to_owned()
+        });
     Ok(())
 }
