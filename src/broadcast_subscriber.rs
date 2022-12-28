@@ -63,8 +63,7 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
                         auto_delete: false,
                         ..Default::default()
                     }).unwrap();
-                    let ex_name = &get_exchange_name(event);
-                    let exchange = create_exchange(ex_name, "fanout".to_owned(), &channel);
+                    let exchange = create_exchange(event, "fanout".to_owned(), &channel);
                     _ = queue.bind(&exchange, event.to_owned(), BTreeMap::default());
                     match queue.borrow().consume(ConsumerOptions::default()) {
                         Ok(consumer) => {

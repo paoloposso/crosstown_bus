@@ -17,12 +17,12 @@ impl BroadcastPublisher {
         message.serialize(&mut buffer)?;
         if let Ok(channel) = self.0.get_mut().open_channel(None) {
             let exchange_name = get_exchange_name(&event_name);
-            let _ = create_exchange(&exchange_name, "fanout".to_owned(), &channel);
+            let _ = create_exchange(&event_name, "fanout".to_owned(), &channel);
             let publish_result = channel.basic_publish::<String>(
                 exchange_name.to_owned(),
                 Publish {
                     body: &buffer,
-                    routing_key: event_name.to_owned(),
+                    routing_key: event_name,
                     mandatory: false,
                     immediate: false,
                     properties: Default::default(),
