@@ -32,7 +32,7 @@ fn send_receive() -> Result<(), Box<dyn Error>> {
     _ = publisher.publish_event("user_created".to_owned(), 
         UserCreatedEventMessage {
             user_id: "asdf".to_owned(),
-            user_name: "Joe Perry".to_owned()
+            user_name: "Geddy Lee".to_owned()
         });
 
     _ = publisher.publish_event("user_created".to_owned(), 

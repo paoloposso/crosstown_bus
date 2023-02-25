@@ -1,15 +1,16 @@
 use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions, 
     Connection, Queue};
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::borrow::{Borrow};
+use std::borrow::{Borrow, BorrowMut};
 use std::cell::Cell;
 use std::collections::{HashMap, BTreeMap};
 use std::error::Error;
+use std::fmt::format;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::{MessageHandler, QueueProperties};
-use crate::tools::helpers::{create_exchange, get_exchange_name, create_dead_letter_policy};
+use crate::tools::helpers::{create_exchange};
 
 pub type GenericResult = Result<(), Box<dyn Error>>;
 
@@ -31,8 +32,7 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
     }
 
     pub fn add_subscription(&mut self, event_name: String, 
-        handler: Arc<dyn MessageHandler<T> + Send + Sync>,
-        queue_properties: QueueProperties
+        handler: Arc<dyn MessageHandler<T> + Send + Sync>
     ) -> Result<&Self, Box<dyn Error>> {        
         if let Some(list) = self.subs_manager.handlers_map.get_mut(&event_name) {
             list.push(handler);
@@ -44,12 +44,11 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
         Ok(self)
     }
 
-    pub fn subscribe_registered_events(self) -> GenericResult {
+    pub fn subscribe_registered_events(self, queue_properties: QueueProperties) -> GenericResult {
         let handlers = self.subs_manager.handlers_map;
         let connection = Arc::new(Mutex::new(self.cnn));
-        // let mut tasks = vec![];
+        
         for (event_name, handlers_list) in handlers {
-
             for handler in handlers_list  {
                 let cnn = Arc::clone(&connection);
                 let event_arc =  Arc::clone(&event_name);
@@ -58,9 +57,9 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
                     let event = event_arc.borrow();
                     let channel = cnn.lock().unwrap().get_mut().open_channel(None).unwrap();
                     let queue: Queue = channel.queue_declare(event, QueueDeclareOptions {
-                        durable: false,
+                        durable: queue_properties.durable,
                         exclusive: false,
-                        auto_delete: false,
+                        auto_delete: queue_properties.auto_delete,
                         ..Default::default()
                     }).unwrap();
                     let exchange = create_exchange(event, "fanout".to_owned(), &channel);
@@ -80,7 +79,7 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
                             }
                         }
                         Err(_) => {
-                            eprintln!("[bus] Error trying to consume");
+                            eprintln!("[bus] Error trying to consume messages");
                         }
                     };
                 });
