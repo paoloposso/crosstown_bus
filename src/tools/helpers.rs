@@ -4,8 +4,8 @@ use amiquip::{QueueDeclareOptions, ExchangeDeclareOptions, ExchangeType};
 
 pub type GenericResult = Result<(), Box<dyn Error>>;
 
-pub(crate) fn get_exchange_name(queue_name: &String) -> String {
-    let mut exchange_name = queue_name.to_owned();
+pub(crate) fn get_exchange_name(event_name: &String) -> String {
+    let mut exchange_name = event_name.to_owned();
     exchange_name.push_str("_exchange");
     exchange_name
 }
@@ -21,20 +21,20 @@ pub(crate) fn create_dead_letter_policy(queue_name: String, channel: &amiquip::C
     Ok(dl_ex_name)
 }
 
-pub(crate) fn create_exchange<'a>(queue_name: &'a String, exchange_type: String, channel: &'a amiquip::Channel) -> amiquip::Exchange<'a> {
+pub(crate) fn create_exchange<'a>(event_name: &'a String, exchange_type: String, channel: &'a amiquip::Channel) -> amiquip::Exchange<'a> {
     let ex_type;
     if exchange_type == "fanout" {
         ex_type = ExchangeType::Fanout;
     } else {
         ex_type = ExchangeType::Direct;
     }
-    let exchange_name = crate::tools::helpers::get_exchange_name(queue_name);
+    let exchange_name = crate::tools::helpers::get_exchange_name(event_name);
     let exchange = channel.exchange_declare(ex_type, exchange_name, ExchangeDeclareOptions::default()).unwrap();
     exchange
 }
 
-fn get_dead_letter_ex_name(queue_name: &String) -> String {
-    let mut exchange_name = queue_name.to_owned();
+fn get_dead_letter_ex_name(event_name: &String) -> String {
+    let mut exchange_name = event_name.to_owned();
     exchange_name.push_str("_exchange_dead_letter");
     exchange_name
 }

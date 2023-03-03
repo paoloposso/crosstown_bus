@@ -9,15 +9,6 @@ pub struct UserCreatedEventMessage {
     pub user_name: String
 }
 
-pub struct MyCustomHandler;
-
-impl MessageHandler<String> for MyCustomHandler {
-    fn handle(&self, message: Box<String>) -> Result<(), HandleError> {
-        println!("Message received on handler 1: {:?}", message);
-        Ok(())
-    }
-}
-
 pub struct UserCreatedEventHandler;
 
 impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
@@ -27,6 +18,9 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
         }
         println!("Message received on User Created Handler: {:?}", message);
         Ok(())
+    }
+    fn get_handler_action(&self) -> String {
+        todo!()
     }
 }
 
@@ -41,19 +35,13 @@ fn send_receive() -> Result<(), Box<dyn Error>> {
     _ = publisher.publish_event("user_created".to_owned(), 
         UserCreatedEventMessage {
             user_id: "asdf".to_owned(),
-            user_name: "Billy Gibbons".to_owned()
+            user_name: "Geddy Lee".to_owned()
         });
 
     _ = publisher.publish_event("user_created".to_owned(), 
         UserCreatedEventMessage {
             user_id: "1234".to_owned(),
-            user_name: "Dusty Hill".to_owned()
-        });
-
-    _ = publisher.publish_event("user_created".to_owned(), 
-        UserCreatedEventMessage {
-            user_id: "100".to_owned(),
-            user_name: "Dusty Hill".to_owned()
+            user_name: "Steven Tyler".to_owned()
         });
 
     _ = publisher.close_connection();

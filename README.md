@@ -19,6 +19,11 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
         println!("Message received on User Created Handler: {:?}", message);
         Ok(())
     }
+
+    // necessary only for broadcasting
+    fn get_handler_action(&self) -> String {
+        todo!()
+    }
 }
 ```
 This method will receive the messages with the type that was configured, from the queue the subscriber will be listening.
@@ -87,6 +92,8 @@ _ = publisher.publish_event("user_created".to_owned(),
 ```
 Since the method publish_event receives a generic parameter as the Message, we can use the same publisher object to publish multiple objects types to multiple queues.
 **Warning:** if the message type you are publishing on a queue doesn't match what the subscriber handler is expecting, it will not be possible to parse the message and a message will be logged.
+
+## Closing the connection to RabbitMQ
 
 You can also manually close the connection, if needed:
 
