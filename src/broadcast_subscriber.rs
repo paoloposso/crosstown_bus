@@ -1,11 +1,10 @@
 use amiquip::{ConsumerOptions, ConsumerMessage, QueueDeclareOptions, 
     Connection, Queue};
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::{Borrow};
 use std::cell::Cell;
 use std::collections::{HashMap, BTreeMap};
 use std::error::Error;
-use std::fmt::format;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -54,14 +53,20 @@ impl<T> BroadcastSubscriber<T> where T : BorshSerialize + BorshDeserialize + Clo
                 let event_arc =  Arc::clone(&event_name);
 
                 thread::spawn(move || {
-                    let event = event_arc.borrow();
+                    let event: &String = event_arc.borrow();
                     let channel = cnn.lock().unwrap().get_mut().open_channel(None).unwrap();
-                    let queue: Queue = channel.queue_declare(event, QueueDeclareOptions {
+
+                    let mut queue_name: String = event.clone();
+                    queue_name.push_str("_");
+                    queue_name.push_str(&handler.get_handler_action());
+
+                    let queue: Queue = channel.queue_declare(queue_name, QueueDeclareOptions {
                         durable: queue_properties.durable,
                         exclusive: false,
                         auto_delete: queue_properties.auto_delete,
                         ..Default::default()
                     }).unwrap();
+
                     let exchange = create_exchange(event, "fanout".to_owned(), &channel);
                     _ = queue.bind(&exchange, event.to_owned(), BTreeMap::default());
                     match queue.borrow().consume(ConsumerOptions::default()) {

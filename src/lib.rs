@@ -10,7 +10,7 @@ mod common;
 
 use std::cell::Cell;
 use std::collections::HashMap;
-use std::hash::Hash;
+
 use std::{error::Error, cell::RefCell};
 
 use amiquip::Connection;

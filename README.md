@@ -19,6 +19,11 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
         println!("Message received on User Created Handler: {:?}", message);
         Ok(())
     }
+
+    // necessary only for broadcasting
+    fn get_handler_action(&self) -> String {
+        todo!()
+    }
 }
 ```
 This method will receive the messages with the type that was configured, from the queue the subscriber will be listening.

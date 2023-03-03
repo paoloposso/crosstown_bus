@@ -16,6 +16,9 @@ impl MessageHandler<OrderCreatedEventMessage> for EmailSenderHandler {
         println!("E-mail send to the user that purchased {:?}, ID {:?}", message.product_description, message.order_id);
         Ok(())
     }
+    fn get_handler_action(&self) -> String {
+        return "send_email".to_owned()
+    }
 }
 
 pub struct DatabaseUpdaterHandler;
@@ -24,6 +27,9 @@ impl MessageHandler<OrderCreatedEventMessage> for DatabaseUpdaterHandler {
     fn handle(&self, message: Box<OrderCreatedEventMessage>) -> Result<(), HandleError> {
         println!("Updating database with order: {:?}", message.order_id);
         Ok(())
+    }
+    fn get_handler_action(&self) -> String {
+        return "update_database".to_owned()
     }
 }
 
@@ -35,7 +41,8 @@ fn broadcast() -> Result<(), Box<dyn Error>> {
 
     _ = subscriber.subscribe_registered_events(QueueProperties { auto_delete: false, durable: false, use_dead_letter: true });
 
-    let mut subscriber2 = CrosstownBus::new_broadcast_subscriber::<OrderCreatedEventMessage>("amqp://guest:guest@localhost:5672".to_owned())?;
+    let mut subscriber2 = 
+        CrosstownBus::new_broadcast_subscriber::<OrderCreatedEventMessage>("amqp://guest:guest@localhost:5672".to_owned())?;
 
     _ = subscriber2.add_subscription("order_created".to_owned(), Arc::new(EmailSenderHandler));
 
@@ -47,7 +54,6 @@ fn broadcast() -> Result<(), Box<dyn Error>> {
             order_id: "gtr123".to_owned(),
             product_description: "Electric Guitar".to_owned()
         });
-
     _ = publisher.publish_event("order_created".to_owned(), 
         OrderCreatedEventMessage {
             order_id: "bss001".to_owned(),
