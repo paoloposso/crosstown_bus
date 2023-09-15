@@ -1,9 +1,9 @@
-name: CI/CD
+name: Build and Test
 
 on:
   push:
     branches:
-      - main  # Change this to your main branch name
+      - main
 
 jobs:
   build-and-test:
