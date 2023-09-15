@@ -18,11 +18,22 @@ jobs:
               with:
                 rust-version: stable
 
+            - name: Build and test crate
+              run: |
+                # Build and test the crate
+                cargo build
+                cargo test
+                # Exit if tests fail
+                if [ $? -ne 0 ]; then
+                    echo "Tests failed, aborting the release."
+                    exit 1
+                fi
+
             - name: Build and publish crate to crates.io
               run: |
                 # Authenticate with crates.io using your API token
                 echo "//registry.npmjs.org/:_authToken=${{ secrets.CARGO_AUTH_TOKEN }}" > ~/.cargo/credentials
 
                 # Build and publish the crate
-                cargo publish --dry-run  # Use --dry-run for testing; remove it for actual publishing
+                cargo publish --dry-run
       
