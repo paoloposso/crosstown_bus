@@ -46,7 +46,7 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
 }
 
 #[test]
-fn send_receive() -> Result<(), Box<dyn Error>> {
+fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     let received_messages = Arc::new(Mutex::new(Vec::new()));
     let listener = CrosstownBus::new_receiver("amqp://guest:guest@localhost:5672".to_owned())?;
 
