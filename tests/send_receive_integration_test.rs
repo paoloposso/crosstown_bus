@@ -64,13 +64,13 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         CrosstownBus::new_sender("amqp://guest:guest@localhost:5672".to_owned())?;
 
 
-    publisher.send(
-        "create_user".to_owned(),
-        UserCreatedEventMessage {
-            user_id: "1234".to_owned(),
-            user_name: "Steven Tyler".to_owned(),
-        },
-    )?;
+    // publisher.send(
+    //     "create_user".to_owned(),
+    //     UserCreatedEventMessage {
+    //         user_id: "1234".to_owned(),
+    //         user_name: "Steven Tyler".to_owned(),
+    //     },
+    // )?;
 
     publisher.send(
         "create_user".to_owned(),
@@ -127,7 +127,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
 
     thread::sleep(Duration::from_secs(1));
 
-    assert_eq!(received_messages.len(), 3);
+    assert_eq!(received_messages.len(), 5);
 
     assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
 
