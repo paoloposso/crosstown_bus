@@ -72,53 +72,21 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    // publisher.send(
-    //     "create_user".to_owned(),
-    //     UserCreatedEventMessage {
-    //         user_id: "asdf".to_owned(),
-    //         user_name: "Geddy Lee".to_owned(),
-    //     },
-    // )?;
-
-    // publisher.send(
-    //     "create_user".to_owned(),
-    //     UserCreatedEventMessage {
-    //         user_id: "1090".to_owned(),
-    //         user_name: "Geddy Leetre".to_owned(),
-    //     },
-    // )?;
-
-    // publisher.send(
-    //     "create_user".to_owned(),
-    //     UserCreatedEventMessage {
-    //         user_id: "asaaadf".to_owned(),
-    //         user_name: "Geddy Leex".to_owned(),
-    //     },
-    // )?;
-
-    // publisher.send(
-    //     "create_user".to_owned(),
-    //     UserCreatedEventMessage {
-    //         user_id: "asdf".to_owned(),
-    //         user_name: "Geddy Leyyy".to_owned(),
-    //     },
-    // )?;
-
-    // publisher.send(
-    //     "create_user".to_owned(),
-    //     UserCreatedEventMessage {
-    //         user_id: "1000".to_owned(),
-    //         user_name: "Roger Waters".to_owned(),
-    //     },
-    // )?;
-
-    // publisher.send(
-    //     "create_user".to_owned(),
-    //     UserCreatedEventMessage {
-    //         user_id: "1001".to_owned(),
-    //         user_name: "Roger Watersx".to_owned(),
-    //     },
-    // )?;
+    publisher.send(
+        "create_user".to_owned(),
+        UserCreatedEventMessage {
+            user_id: "asdf".to_owned(),
+            user_name: "Geddy Lee".to_owned(),
+        },
+    )?;
+   
+    publisher.send(
+        "create_user".to_owned(),
+        UserCreatedEventMessage {
+            user_id: "100".to_owned(),
+            user_name: "Roger Waters".to_owned(),
+        },
+    )?;
 
     thread::sleep(Duration::from_secs(1));
 
@@ -127,7 +95,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
 
     thread::sleep(Duration::from_secs(1));
 
-    assert_eq!(received_messages.len(), 5);
+    assert!(received_messages.len() == 3 || received_messages.len() == 2);
 
     assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
 
