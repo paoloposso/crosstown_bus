@@ -63,19 +63,20 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     let mut publisher =
         CrosstownBus::new_sender("amqp://guest:guest@localhost:5672".to_owned())?;
 
-    publisher.send(
-        "create_user".to_owned(),
-        UserCreatedEventMessage {
-            user_id: "asdf".to_owned(),
-            user_name: "Geddy Lee".to_owned(),
-        },
-    )?;
 
     publisher.send(
         "create_user".to_owned(),
         UserCreatedEventMessage {
             user_id: "1234".to_owned(),
             user_name: "Steven Tyler".to_owned(),
+        },
+    )?;
+
+    publisher.send(
+        "create_user".to_owned(),
+        UserCreatedEventMessage {
+            user_id: "asdf".to_owned(),
+            user_name: "Geddy Lee".to_owned(),
         },
     )?;
 
