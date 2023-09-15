@@ -5,16 +5,16 @@ use borsh::{BorshSerialize, BorshDeserialize};
 
 use crate::{MessageHandler, tools::helpers::{create_dead_letter_policy, create_exchange, GenericResult}, message_handler::send_message_to_handler, QueueProperties};
 
-pub struct QueuePublisher {
+pub struct Sender {
     pub(crate) cnn: RefCell<Connection>
 }
 
-pub struct QueueListener {
+pub struct Receiver {
     pub(crate) cnn: RefCell<Connection>
 }
 
-impl QueueListener {
-    pub fn listen<T>(self, event_name: String, 
+impl Receiver {
+    pub fn receive<T>(self, event_name: String, 
         event_handler: impl MessageHandler<T> + Send + Sync + 'static,
         queue_properties: QueueProperties) -> GenericResult
         where T : BorshDeserialize + BorshSerialize + Clone + 'static {
@@ -60,7 +60,7 @@ impl QueueListener {
                     };
                 },
                 Err(err) => eprintln!("[crosstown_bus] Error trying to consume: {:?}", err),
-            } 
+            }
         });
         Ok(())
     }
@@ -71,8 +71,8 @@ impl QueueListener {
     }
 }
 
-impl QueuePublisher {
-    pub fn publish_event<T>(&mut self, event_name: String, message: T) -> GenericResult 
+impl Sender {
+    pub fn send<T>(&mut self, event_name: String, message: T) -> GenericResult 
                                             where T: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;

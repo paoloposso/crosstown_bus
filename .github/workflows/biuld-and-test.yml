@@ -1,0 +1,44 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build Docker image
+        run: docker build -t my-docker-image:latest .
+
+      - name: Setup | Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: stable
+          components: clippy
+      
+      - name: Build | Lint
+        run: cargo clippy
+
+      - name: Install Make
+        run: sudo apt-get install make
+
+      - name: Start Docker Compose
+        run: docker-compose -f docker-compose.yml up -d
+
+      - name: Run tests
+        run: make test
+
+      - name: Stop Docker Compose
+        run: docker-compose -f docker-compose.yml down
