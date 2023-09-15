@@ -79,19 +79,21 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    // publisher.send(
-    //     "create_user".to_owned(),
-    //     UserCreatedEventMessage {
-    //         user_id: "100".to_owned(),
-    //         user_name: "Roger Waters".to_owned(),
-    //     },
-    // )?;
+    publisher.send(
+        "create_user".to_owned(),
+        UserCreatedEventMessage {
+            user_id: "100".to_owned(),
+            user_name: "Roger Waters".to_owned(),
+        },
+    )?;
 
-    // Sleep for a moment to allow messages to be processed
     thread::sleep(Duration::from_secs(1));
 
     let received_messages = received_messages.lock().unwrap();
-    assert_eq!(received_messages.len(), 2);
+
+    thread::sleep(Duration::from_secs(1));
+
+    assert_eq!(received_messages.len(), 3);
 
     // Optionally, you can further assert the content of received messages
     assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
