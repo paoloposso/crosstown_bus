@@ -90,14 +90,12 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     thread::sleep(Duration::from_secs(1));
 
     let received_messages = received_messages.lock().unwrap();
+    println!("Received messages: {:?}", received_messages);
 
     thread::sleep(Duration::from_secs(1));
 
     assert_eq!(received_messages.len(), 3);
 
-    println!("Received messages: {:?}", received_messages);
-
-    // Optionally, you can further assert the content of received messages
     assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
 
     publisher.close_connection()?;
