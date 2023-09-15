@@ -83,7 +83,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     publisher.send(
         "create_user".to_owned(),
         UserCreatedEventMessage {
-            user_id: "100".to_owned(),
+            user_id: "1000".to_owned(),
             user_name: "Roger Waters".to_owned(),
         },
     )?;
