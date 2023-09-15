@@ -19,6 +19,6 @@ logs:
 	docker-compose -f $(COMPOSE_FILE) logs -f
 
 test:
-	cargo test
+	cargo test -- --nocapture
 
 .PHONY: all up down stop logs test

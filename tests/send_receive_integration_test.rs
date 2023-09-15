@@ -95,6 +95,8 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
 
     assert_eq!(received_messages.len(), 3);
 
+    println!("Received messages: {:?}", received_messages);
+
     // Optionally, you can further assert the content of received messages
     assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
 
