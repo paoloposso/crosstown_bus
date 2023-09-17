@@ -60,20 +60,20 @@ borsh-derive = "0.9.1"
 First, let's create a subscriber object
 
 ```
-let listener = CrosstownBus::new_queue_listener("amqp://guest:guest@localhost:5672".to_owned())?;
+let receiver = CrosstownBus::new_receiver("amqp://guest:guest@localhost:5672".to_owned())?;
 ```
 
 After that, call the subscribe_event method, passing the event name / queue name that you want to subbscribe to.
 If the queue was not created on RabbitMQ, it will be created now, when you subscribe to it.
 
 ```
-_ = listener.listen("user_created".to_owned(), UserCreatedEventHandler, 
+_ = receiver.receive("user_created".to_owned(), UserCreatedEventHandler, 
     QueueProperties { auto_delete: false, durable: false, use_dead_letter: true });
 ```
 Note that the _subscribe_event_ method in async, therefore, I'm calling _await_ when invoking it.
 Another option is to block it, by using the following notation:
 ```
-futures::executor::block_on(listener.listen("user_created".to_owned(), UserCreatedEventHandler, None));
+futures::executor::block_on(receiver.receive("user_created".to_owned(), UserCreatedEventHandler, None));
 ```
 
 The parameter queue_properties is optional and holds specific queue configurations, such as whether the queue should be auto deleted and durable.

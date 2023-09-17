@@ -24,5 +24,4 @@ jobs:
                 echo "//registry.npmjs.org/:_authToken=${{ secrets.CARGO_AUTH_TOKEN }}" > ~/.cargo/credentials
 
                 # Build and publish the crate
-                cargo publish --dry-run
-      
+                cargo publish
