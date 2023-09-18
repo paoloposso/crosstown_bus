@@ -4,15 +4,15 @@ Flexible and easy to configure Event Bus for event-driven systems in Rust.
 Create your own structs and integrate your services / microservices by sending strongly typed payloads.
 
 ## Creating a Handler
-A message received from the queue will be sent to a Message Handler.
+A message received from the queue will be sent to a Handler.
 
 Your Message Handler must implement the _trait_ MessageHandler, and inform the type of Message it you handle.
 
 ```
-struct UserCreatedEventHandler;
+struct NotifyUserEventHandler;
 
-impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
-    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), HandleError> {
+impl MessageHandler<NotifyUserMessage> for NotifyUserEventHandler {
+    fn handle(&self, message: Box<NotifyUserMessage>) -> Result<(), HandleError> {
         if message.user_id == "100".to_owned() {
             return Err(HandleError::new("ID 100 rejected".to_owned(), true));
         }
@@ -33,7 +33,7 @@ The **HandleError** struct is used to inform that the process didn't ocurr corre
 With the Error object you can also tell the Bus whether this message should be requeued in order to try the process again.
 
 ## Creating an Event Message
-Notice that the Message type we want to send and receive between services is **UserCreatedEventMessage**.
+Notice that the Message type we want to send and receive between services is **NotifyUserMessage**.
 
 When we create the Event Message struct and the Message Handler, we are defining:
 - the format of the event message we are sending between services.
@@ -43,9 +43,10 @@ Here you have an example of Message, that we are using in the current example:
 
 ```
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
-pub struct UserCreatedEventMessage {
+pub struct NotifyUserMessage {
     pub user_id: String,
-    pub user_name: String
+    pub user_name: String,
+    pub user_name: String,
 }
 ```
 Notice that your struct must derive from BorshDeserialize and BorshSerialize, so Crosstow Bus is able to serialize the struct you defined to send to RabbitMQ and desserialize the messages coming from RabbitMQ into your customized format.
@@ -56,24 +57,24 @@ borsh = "0.9.3"
 borsh-derive = "0.9.1"
 ```
 
-## Subscribing to an Event to receive the Messages
-First, let's create a subscriber object
+## Linstening to an Event Message
+First, let's create a Receiver object
 
 ```
 let receiver = CrosstownBus::new_receiver("amqp://guest:guest@localhost:5672".to_owned())?;
 ```
 
 After that, call the subscribe_event method, passing the event name / queue name that you want to subbscribe to.
-If the queue was not created on RabbitMQ, it will be created now, when you subscribe to it.
+If the queue was not created on RabbitMQ, it will be created when the receiver subscribes to it.
 
 ```
-_ = receiver.receive("user_created".to_owned(), UserCreatedEventHandler, 
+_ = receiver.receive("notify_user".to_owned(), NotifyUserEventHandler, 
     QueueProperties { auto_delete: false, durable: false, use_dead_letter: true });
 ```
 Note that the _subscribe_event_ method in async, therefore, I'm calling _await_ when invoking it.
 Another option is to block it, by using the following notation:
 ```
-futures::executor::block_on(receiver.receive("user_created".to_owned(), UserCreatedEventHandler, None));
+futures::executor::block_on(receiver.receive("notify_user".to_owned(), NotifyUserEventHandler, None));
 ```
 
 The parameter queue_properties is optional and holds specific queue configurations, such as whether the queue should be auto deleted and durable.
@@ -84,10 +85,11 @@ To create the publisher the process is pretty much the same, only a different cr
 ```
 let mut publisher = CrosstownBus::new_queue_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
 
-_ = publisher.publish_event("user_created".to_owned(), 
-        UserCreatedEventMessage {
+_ = publisher.publish_event("notify_user".to_owned(), 
+        NotifyUserMessage {
             user_id: "asdf".to_owned(),
-            user_name: "Billy Gibbons".to_owned()
+            user_name: "Billy Gibbons".to_owned(),
+            email: "bg@test.com".to_owned()
         });
 ```
 Since the method publish_event receives a generic parameter as the Message, we can use the same publisher object to publish multiple objects types to multiple queues.

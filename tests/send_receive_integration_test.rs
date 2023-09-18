@@ -9,27 +9,28 @@ use crosstown_bus::{
 };
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
-pub struct UserCreatedEventMessage {
+pub struct NotifyUserMessage {
     pub user_id: String,
     pub user_name: String,
+    pub email: String,
 }
 
-pub struct UserCreatedEventHandler {
-    received_messages: Arc<Mutex<Vec<UserCreatedEventMessage>>>,
+pub struct NotifyUserHandler {
+    received_messages: Arc<Mutex<Vec<NotifyUserMessage>>>,
 }
 
-impl UserCreatedEventHandler {
-    pub fn new(received_messages: Arc<Mutex<Vec<UserCreatedEventMessage>>>) -> Self {
+impl NotifyUserHandler {
+    pub fn new(received_messages: Arc<Mutex<Vec<NotifyUserMessage>>>) -> Self {
         Self { received_messages }
     }
 
-    pub fn get_received_messages(&self) -> Vec<UserCreatedEventMessage> {
+    pub fn get_received_messages(&self) -> Vec<NotifyUserMessage> {
         self.received_messages.lock().unwrap().clone()
     }
 }
 
-impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
-    fn handle(&self, message: Box<UserCreatedEventMessage>) -> Result<(), HandleError> {
+impl MessageHandler<NotifyUserMessage> for NotifyUserHandler {
+    fn handle(&self, message: Box<NotifyUserMessage>) -> Result<(), HandleError> {
         self.received_messages.lock().unwrap().push(*message.clone());
 
         if message.user_id == "100".to_owned() {
@@ -48,11 +49,11 @@ impl MessageHandler<UserCreatedEventMessage> for UserCreatedEventHandler {
 #[test]
 fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     let received_messages = Arc::new(Mutex::new(Vec::new()));
-    let listener = CrosstownBus::new_receiver("amqp://guest:guest@localhost:5672".to_owned())?;
+    let receiver = CrosstownBus::new_receiver("amqp://guest:guest@localhost:5672".to_owned())?;
 
-    listener.receive(
+    receiver.receive(
         "create_user".to_owned(),
-        UserCreatedEventHandler::new(received_messages.clone()),
+        NotifyUserHandler::new(received_messages.clone()),
         QueueProperties {
             auto_delete: false,
             durable: false,
@@ -60,31 +61,33 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    let mut publisher =
+    let mut sender =
         CrosstownBus::new_sender("amqp://guest:guest@localhost:5672".to_owned())?;
 
-
-    publisher.send(
+    sender.send(
         "create_user".to_owned(),
-        UserCreatedEventMessage {
+        NotifyUserMessage {
             user_id: "1234".to_owned(),
             user_name: "Steven Tyler".to_owned(),
+            email: "st@test.com".to_owned(),
         },
     )?;
 
-    publisher.send(
+    sender.send(
         "create_user".to_owned(),
-        UserCreatedEventMessage {
+        NotifyUserMessage {
             user_id: "asdf".to_owned(),
             user_name: "Geddy Lee".to_owned(),
+            email: "gl@test.com".to_owned(),
         },
     )?;
    
-    publisher.send(
+    sender.send(
         "create_user".to_owned(),
-        UserCreatedEventMessage {
+        NotifyUserMessage {
             user_id: "100".to_owned(),
             user_name: "Roger Waters".to_owned(),
+            email: "rw@test.com".to_owned(),
         },
     )?;
 
@@ -99,6 +102,6 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
 
     assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
 
-    publisher.close_connection()?;
+    sender.close_connection()?;
     Ok(())
 }
