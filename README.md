@@ -32,8 +32,15 @@ The **HandleError** struct is used to inform that the process didn't ocurr corre
 
 With the Error object you can also tell the Bus whether this message should be requeued in order to try the process again.
 
-## Creating RabbitMQ instance on container
+## Creating RabbitMQ instance on container to test locally
 Run `make up`
+Go to http://localhost:15672/
+Enter guest as both username and password.
+
+In your terminal, run `cargo test` to run the tests.
+
+You can check out the exchanges, queues and messages on the RabbitMQ admin page.
+
 
 ## Creating an Event Message
 Notice that the Message type we want to send and receive between services is **UserCreatedMessage**.
@@ -55,6 +62,7 @@ pub struct UserCreatedMessage {
 Notice that your struct must derive from BorshDeserialize and BorshSerialize, so Crosstow Bus is able to serialize the struct you defined to send to RabbitMQ and desserialize the messages coming from RabbitMQ into your customized format.
 
 So, don't forget to add the imports to youw cargo.toml file.
+
 ```
 borsh = "0.9.3"
 borsh-derive = "0.9.1"
@@ -109,9 +117,9 @@ So, if you have multiple subscribers that need to handle the same messages, choo
 To create the sender the process is pretty much the same, only a different creation method.
 
 ```
-let mut sender = CrosstownBus::new_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
+let mut publisher = CrosstownBus::new_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
 
-_ = sender.send("notify_user".to_owned(), 
+_ = publisher.publish("notify_user".to_owned(), 
         UserCreatedMessage {
             user_id: "asdf".to_owned(),
             user_name: "Billy Gibbons".to_owned(),
@@ -126,5 +134,5 @@ Since the method send receives a generic parameter as the Message, we can use th
 You can also manually close the connection, if needed:
 
 ```
-_ = sender.close_connection();
+_ = publisher.close_connection();
 ```
