@@ -28,7 +28,6 @@ pub(crate) fn create_exchange<'a>(exchange_name: &'a String, exchange_type: Stri
     } else {
         ex_type = ExchangeType::Direct;
     }
-    let exchange_name = exchange_name;
     let exchange = channel.exchange_declare(ex_type, exchange_name, ExchangeDeclareOptions::default()).unwrap();
     exchange
 }
