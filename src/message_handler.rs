@@ -4,7 +4,6 @@ use std::fmt;
 use borsh::{BorshDeserialize, BorshSerialize};
 
 pub trait MessageHandler<T> {
-    fn get_handler_action(&self) -> String;
     fn handle(&self, message: Box<T>) -> Result<(), HandleError> 
         where T: Clone + BorshDeserialize + BorshSerialize + 'static;
 }

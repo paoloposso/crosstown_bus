@@ -11,8 +11,8 @@ Your Message Handler must implement the _trait_ MessageHandler, and inform the t
 ```
 struct NotifyUserEventHandler;
 
-impl MessageHandler<NotifyUserMessage> for NotifyUserEventHandler {
-    fn handle(&self, message: Box<NotifyUserMessage>) -> Result<(), HandleError> {
+impl MessageHandler<UserCreatedMessage> for NotifyUserEventHandler {
+    fn handle(&self, message: Box<UserCreatedMessage>) -> Result<(), HandleError> {
         if message.user_id == "100".to_owned() {
             return Err(HandleError::new("ID 100 rejected".to_owned(), true));
         }
@@ -33,7 +33,7 @@ The **HandleError** struct is used to inform that the process didn't ocurr corre
 With the Error object you can also tell the Bus whether this message should be requeued in order to try the process again.
 
 ## Creating an Event Message
-Notice that the Message type we want to send and receive between services is **NotifyUserMessage**.
+Notice that the Message type we want to send and receive between services is **UserCreatedMessage**.
 
 When we create the Event Message struct and the Message Handler, we are defining:
 - the format of the event message we are sending between services.
@@ -43,10 +43,10 @@ Here you have an example of Message, that we are using in the current example:
 
 ```
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
-pub struct NotifyUserMessage {
+pub struct UserCreatedMessage {
     pub user_id: String,
     pub user_name: String,
-    pub user_name: String,
+    pub user_email: String,
 }
 ```
 Notice that your struct must derive from BorshDeserialize and BorshSerialize, so Crosstow Bus is able to serialize the struct you defined to send to RabbitMQ and desserialize the messages coming from RabbitMQ into your customized format.
@@ -80,19 +80,19 @@ futures::executor::block_on(receiver.receive("notify_user".to_owned(), NotifyUse
 The parameter queue_properties is optional and holds specific queue configurations, such as whether the queue should be auto deleted and durable.
 
 ## Publishing / sending an Event Message
-To create the publisher the process is pretty much the same, only a different creation method.
+To create the sender the process is pretty much the same, only a different creation method.
 
 ```
-let mut publisher = CrosstownBus::new_queue_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
+let mut sender = CrosstownBus::new_sender("amqp://guest:guest@localhost:5672".to_owned())?;
 
-_ = publisher.publish_event("notify_user".to_owned(), 
-        NotifyUserMessage {
+_ = sender.send("notify_user".to_owned(), 
+        UserCreatedMessage {
             user_id: "asdf".to_owned(),
             user_name: "Billy Gibbons".to_owned(),
             email: "bg@test.com".to_owned()
         });
 ```
-Since the method publish_event receives a generic parameter as the Message, we can use the same publisher object to publish multiple objects types to multiple queues.
+Since the method send receives a generic parameter as the Message, we can use the same sender object to publish multiple objects types to multiple queues.
 **Warning:** if the message type you are publishing on a queue doesn't match what the subscriber handler is expecting, it will not be possible to parse the message and a message will be logged.
 
 ## Closing the connection to RabbitMQ
@@ -100,5 +100,5 @@ Since the method publish_event receives a generic parameter as the Message, we c
 You can also manually close the connection, if needed:
 
 ```
-_ = publisher.close_connection();
+_ = sender.close_connection();
 ```

@@ -21,7 +21,10 @@ impl Receiver {
 
         let connection = Arc::new(Mutex::new(self.cnn));
         let handler = Arc::new(event_handler);
-        let queue_name = event_name.clone();
+        let mut queue_name = event_name.clone();
+        if queue_properties.consume_queue_name.is_some() {
+            queue_name = queue_properties.consume_queue_name.unwrap();
+        }
         let cnn = Arc::clone(&connection);
 
         thread::spawn(move || {
@@ -38,7 +41,7 @@ impl Receiver {
 
             match channel.queue_declare(&queue_name, queue_options) {
                 Ok(queue) => {
-                    let exchange = create_exchange(&queue_name, "direct".to_owned(), &channel);
+                    let exchange = create_exchange(&queue_name, "fanout".to_owned(), &channel);
 
                     _ = queue.bind(&exchange, &queue_name, BTreeMap::default());
 
