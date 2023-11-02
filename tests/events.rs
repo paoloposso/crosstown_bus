@@ -18,10 +18,6 @@ impl NotifyUserHandler {
     pub fn new(received_messages: Arc<Mutex<Vec<UserCreatedMessage>>>) -> Self {
         Self { received_messages }
     }
-
-    pub fn get_received_messages(&self) -> Vec<UserCreatedMessage> {
-        self.received_messages.lock().unwrap().clone()
-    }
 }
 
 impl MessageHandler<UserCreatedMessage> for NotifyUserHandler {
@@ -29,9 +25,9 @@ impl MessageHandler<UserCreatedMessage> for NotifyUserHandler {
         self.received_messages.lock().unwrap().push(*message.clone());
 
         if message.user_id == "100".to_owned() {
-            return Err(HandleError::new("ID 100 rejected".to_owned(), false));
+            return Err(HandleError::new("ID 100 rejected on NotifyUserHandler".to_owned(), false));
         }
-        println!("Message received on User Created Handler: {:?}", message);
+        println!("Message received on NotifyUserHandler: {:?}", message);
 
         Ok(())
     }
@@ -45,10 +41,6 @@ impl AddUserToDBHandler {
     pub fn new(received_messages: Arc<Mutex<Vec<UserCreatedMessage>>>) -> Self {
         Self { received_messages }
     }
-
-    pub fn get_received_messages(&self) -> Vec<UserCreatedMessage> {
-        self.received_messages.lock().unwrap().clone()
-    }
 }
 
 impl MessageHandler<UserCreatedMessage> for AddUserToDBHandler {
@@ -56,9 +48,9 @@ impl MessageHandler<UserCreatedMessage> for AddUserToDBHandler {
         self.received_messages.lock().unwrap().push(*message.clone());
 
         if message.user_id == "100".to_owned() {
-            return Err(HandleError::new("ID 100 rejected".to_owned(), false));
+            return Err(HandleError::new("ID 100 rejected on AddUserToDBHandler".to_owned(), false));
         }
-        println!("Message received on User Created Handler: {:?}", message);
+        println!("Message received on AddUserToDBHandler: {:?}", message);
 
         Ok(())
     }

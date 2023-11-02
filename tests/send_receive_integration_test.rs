@@ -14,10 +14,10 @@ mod events;
 #[test]
 fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     let received_messages = Arc::new(Mutex::new(Vec::new()));
-    let receiver = CrosstownBus::new_receiver("amqp://guest:guest@localhost:5672".to_owned())?;
-    let receiver2 = CrosstownBus::new_receiver("amqp://guest:guest@localhost:5672".to_owned())?;
+    let subscriber = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
+    let subscriber2 = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 
-    receiver.receive(
+    subscriber.subscribe(
         "user_created".to_owned(),
         NotifyUserHandler::new(received_messages.clone()),
         QueueProperties {
@@ -28,8 +28,8 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    receiver2.receive(
-        "create_user".to_owned(),
+    subscriber2.subscribe(
+        "user_created".to_owned(),
         AddUserToDBHandler::new(received_messages.clone()),
         QueueProperties {
             auto_delete: false,
@@ -40,7 +40,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     )?;
 
     let mut sender =
-        CrosstownBus::new_sender("amqp://guest:guest@localhost:5672".to_owned())?;
+        CrosstownBus::new_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
 
     sender.send(
         "user_created".to_owned(),
@@ -76,7 +76,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
 
     thread::sleep(Duration::from_secs(1));
 
-    assert!(received_messages.len() == 3 || received_messages.len() == 2);
+    assert!(received_messages.len() == 6 || received_messages.len() == 5);
 
     assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
 

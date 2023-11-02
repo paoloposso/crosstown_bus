@@ -3,9 +3,6 @@
 # Define the name of your Docker Compose YAML file
 COMPOSE_FILE = docker-compose.yml
 
-# Default target
-all: up
-
 up:
 	docker-compose -f $(COMPOSE_FILE) up -d
 

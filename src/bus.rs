@@ -5,16 +5,16 @@ use borsh::{BorshSerialize, BorshDeserialize};
 
 use crate::{MessageHandler, tools::helpers::{create_dead_letter_policy, create_exchange, GenericResult}, message_handler::send_message_to_handler, QueueProperties};
 
-pub struct Sender {
+pub struct Publisher {
     pub(crate) cnn: RefCell<Connection>
 }
 
-pub struct Receiver {
+pub struct Subscriber {
     pub(crate) cnn: RefCell<Connection>
 }
 
-impl Receiver {
-    pub fn receive<T>(self, event_name: String, 
+impl Subscriber {
+    pub fn subscribe<T>(self, event_name: String, 
         event_handler: impl MessageHandler<T> + Send + Sync + 'static,
         queue_properties: QueueProperties) -> GenericResult
         where T : BorshDeserialize + BorshSerialize + Clone + 'static {
@@ -41,7 +41,7 @@ impl Receiver {
 
             match channel.queue_declare(&queue_name, queue_options) {
                 Ok(queue) => {
-                    let exchange = create_exchange(&queue_name, "fanout".to_owned(), &channel);
+                    let exchange = create_exchange(&event_name, "fanout".to_owned(), &channel);
 
                     _ = queue.bind(&exchange, &queue_name, BTreeMap::default());
 
@@ -74,14 +74,14 @@ impl Receiver {
     }
 }
 
-impl Sender {
+impl Publisher {
     pub fn send<T>(&mut self, event_name: String, message: T) -> GenericResult 
                                             where T: BorshSerialize + BorshDeserialize {
         let mut buffer = Vec::new();
         message.serialize(&mut buffer)?;
         if let Ok(channel) = self.cnn.get_mut().open_channel(None) {
             let exchange_name = crate::tools::helpers::get_exchange_name(&event_name);
-            let _ = create_exchange(&exchange_name, "direct".to_owned(), &channel);
+            let _ = create_exchange(&exchange_name, "fanout".to_owned(), &channel);
             let publish_result = channel.basic_publish::<String>(
                 exchange_name,
                 Publish {

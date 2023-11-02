@@ -32,6 +32,9 @@ The **HandleError** struct is used to inform that the process didn't ocurr corre
 
 With the Error object you can also tell the Bus whether this message should be requeued in order to try the process again.
 
+## Creating RabbitMQ instance on container
+Run `make up`
+
 ## Creating an Event Message
 Notice that the Message type we want to send and receive between services is **UserCreatedMessage**.
 
@@ -61,15 +64,24 @@ borsh-derive = "0.9.1"
 First, let's create a Receiver object
 
 ```
-let receiver = CrosstownBus::new_receiver("amqp://guest:guest@localhost:5672".to_owned())?;
+let subscriber = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 ```
 
 After that, call the subscribe_event method, passing the event name / queue name that you want to subbscribe to.
 If the queue was not created on RabbitMQ, it will be created when the receiver subscribes to it.
 
 ```
-_ = receiver.receive("notify_user".to_owned(), NotifyUserEventHandler, 
-    QueueProperties { auto_delete: false, durable: false, use_dead_letter: true });
+subscriber.subscribe(
+        "user_created".to_owned(),
+        NotifyUserHandler::new(received_messages.clone()),
+        QueueProperties {
+            auto_delete: false,
+            durable: false,
+            use_dead_letter: true,
+            consume_queue_name: Some("queue2".to_string()),
+        },
+    )?;
+
 ```
 Note that the _subscribe_event_ method in async, therefore, I'm calling _await_ when invoking it.
 Another option is to block it, by using the following notation:
@@ -79,11 +91,25 @@ futures::executor::block_on(receiver.receive("notify_user".to_owned(), NotifyUse
 
 The parameter queue_properties is optional and holds specific queue configurations, such as whether the queue should be auto deleted and durable.
 
+### !!! Important: consume_queue_name !!!
+
+When you subscribe to an event, the subscriber has its own queue.
+
+The publisher publishes to an exchange, *not to a queue*.
+
+Every queue receives a copy of the message.
+
+Subscribers may have, each of them, a different queue. All these queues will receive a copy of the message.
+
+Subscribers that use the same queue, will compete for the messages so these messages will be distributed among them. The outcome is that they will not receive all the messages every time.
+
+So, if you have multiple subscribers that need to handle the same messages, choose a different queue name for each of them.
+
 ## Publishing / sending an Event Message
 To create the sender the process is pretty much the same, only a different creation method.
 
 ```
-let mut sender = CrosstownBus::new_sender("amqp://guest:guest@localhost:5672".to_owned())?;
+let mut sender = CrosstownBus::new_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
 
 _ = sender.send("notify_user".to_owned(), 
         UserCreatedMessage {
