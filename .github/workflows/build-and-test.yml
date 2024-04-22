@@ -1,39 +1,60 @@
-name: Build and Test
+on: [push, pull_request]
 
-on:
-  push:
-  pull_request:
-    branches:
-      - main
+name: Continuous integration
 
 jobs:
-  build-and-test:
+  check:
+    name: Check
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Setup | Checkout
-        uses: actions/checkout@v2
-
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
         with:
-          rust-version: stable
-          components: clippy
-      
-      - name: Build | Lint
-        run: cargo clippy
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
 
-      - name: Install Make
-        run: sudo apt-get install make
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
 
-      - name: Start Docker Compose
-        run: docker-compose -f docker-compose.yml up -d
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - run: rustup component add rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
 
-      - name: Run tests
-        run: make test
-
-      - name: Stop Docker Compose
-        run: docker-compose -f docker-compose.yml down
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - run: rustup component add clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
