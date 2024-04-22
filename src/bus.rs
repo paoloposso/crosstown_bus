@@ -41,7 +41,8 @@ impl Subscriber {
 
             match channel.queue_declare(&queue_name, queue_options) {
                 Ok(queue) => {
-                    let exchange = create_exchange(&event_name, "fanout".to_owned(), &channel);
+                    let ex_name = crate::tools::helpers::get_exchange_name(&event_name);
+                    let exchange = create_exchange(&ex_name, "fanout".to_owned(), &channel);
 
                     _ = queue.bind(&exchange, &queue_name, BTreeMap::default());
 

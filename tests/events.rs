@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh_derive::{BorshDeserialize, BorshSerialize};
 use crosstown_bus::{HandleError, MessageHandler};
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]

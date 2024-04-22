@@ -39,10 +39,10 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    let mut sender =
+    let mut publisher =
         CrosstownBus::new_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
 
-    sender.send(
+    publisher.send(
         "user_created".to_owned(),
         UserCreatedMessage {
             user_id: "1234".to_owned(),
@@ -51,7 +51,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    sender.send(
+    publisher.send(
         "user_created".to_owned(),
         UserCreatedMessage {
             user_id: "asdf".to_owned(),
@@ -60,7 +60,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
    
-    sender.send(
+    publisher.send(
         "user_created".to_owned(),
         UserCreatedMessage {
             user_id: "100".to_owned(),
@@ -77,6 +77,6 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
 
     assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
 
-    sender.close_connection()?;
+    publisher.close_connection()?;
     Ok(())
 }

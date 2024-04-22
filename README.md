@@ -8,24 +8,31 @@ A message received from the queue will be sent to a Handler.
 
 Your Message Handler must implement the _trait_ MessageHandler, and inform the type of Message it you handle.
 
-```
-struct NotifyUserEventHandler;
+``` Rust
+pub struct NotifyUserHandler {
+    received_messages: Arc<Mutex<Vec<UserCreatedMessage>>>,
+}
 
-impl MessageHandler<UserCreatedMessage> for NotifyUserEventHandler {
-    fn handle(&self, message: Box<UserCreatedMessage>) -> Result<(), HandleError> {
-        if message.user_id == "100".to_owned() {
-            return Err(HandleError::new("ID 100 rejected".to_owned(), true));
-        }
-        println!("Message received on User Created Handler: {:?}", message);
-        Ok(())
+impl NotifyUserHandler {
+    pub fn new(received_messages: Arc<Mutex<Vec<UserCreatedMessage>>>) -> Self {
+        Self { received_messages }
     }
+}
 
-    // necessary only for broadcasting
-    fn get_handler_action(&self) -> String {
-        todo!()
+impl MessageHandler<UserCreatedMessage> for NotifyUserHandler {
+    fn handle(&self, message: Box<UserCreatedMessage>) -> Result<(), HandleError> {
+        self.received_messages.lock().unwrap().push(*message.clone());
+
+        if message.user_id == "100".to_owned() {
+            return Err(HandleError::new("ID 100 rejected on NotifyUserHandler".to_owned(), false));
+        }
+        println!("Message received on NotifyUserHandler: {:?}", message);
+
+        Ok(())
     }
 }
 ```
+
 This method will receive the messages with the type that was configured, from the queue the subscriber will be listening.
 
 The **HandleError** struct is used to inform that the process didn't ocurr corretly, though the message was received.
@@ -33,7 +40,7 @@ The **HandleError** struct is used to inform that the process didn't ocurr corre
 With the Error object you can also tell the Bus whether this message should be requeued in order to try the process again.
 
 ## Creating RabbitMQ instance on container to test locally
-Run `make up`
+On terminal, run `make up`
 Go to http://localhost:15672/
 Enter guest as both username and password.
 
@@ -59,13 +66,14 @@ pub struct UserCreatedMessage {
     pub user_email: String,
 }
 ```
+
 Notice that your struct must derive from BorshDeserialize and BorshSerialize, so Crosstow Bus is able to serialize the struct you defined to send to RabbitMQ and desserialize the messages coming from RabbitMQ into your customized format.
 
 So, don't forget to add the imports to youw cargo.toml file.
 
 ```
-borsh = "0.9.3"
-borsh-derive = "0.9.1"
+borsh = "1.4.0"
+borsh-derive = "1.4.0"
 ```
 
 ## Linstening to an Event Message
@@ -78,7 +86,7 @@ let subscriber = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672
 After that, call the subscribe_event method, passing the event name / queue name that you want to subbscribe to.
 If the queue was not created on RabbitMQ, it will be created when the receiver subscribes to it.
 
-```
+``` Rust
 subscriber.subscribe(
         "user_created".to_owned(),
         NotifyUserHandler::new(received_messages.clone()),
@@ -91,7 +99,7 @@ subscriber.subscribe(
     )?;
 
 ```
-Note that the _subscribe_event_ method in async, therefore, I'm calling _await_ when invoking it.
+Please Note that the _subscribe_event_ method in async, therefore, I'm calling _await_ when invoking it.
 Another option is to block it, by using the following notation:
 ```
 futures::executor::block_on(receiver.receive("notify_user".to_owned(), NotifyUserEventHandler, None));
@@ -116,7 +124,7 @@ So, if you have multiple subscribers that need to handle the same messages, choo
 ## Publishing / sending an Event Message
 To create the sender the process is pretty much the same, only a different creation method.
 
-```
+``` Rust
 let mut publisher = CrosstownBus::new_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
 
 _ = publisher.publish("notify_user".to_owned(), 

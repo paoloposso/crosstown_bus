@@ -1,6 +1,6 @@
 [package]
 name = "crosstown_bus"
-version = "0.8.1"
+version = "1.0.0"
 edition = "2021"
 authors = ["paoloposso <pvictorsys@gmail.com>"]
 readme = "README.md"
@@ -11,8 +11,8 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-amiquip = "0.4.0"
+amiquip = "0.4.2"
 futures = "0.3"
-borsh = "0.9.3"
-borsh-derive = "0.9.1"
-tokio = {version="1.21.2", features=["full"]}
+borsh = "1.4.0"
+borsh-derive = "1.4.0"
+tokio = {version="1.37.0", features=["full"]}
