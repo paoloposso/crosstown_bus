@@ -19,7 +19,6 @@ jobs:
       - name: Setup Docker Compose
         run: |
           docker-compose up -d
-          docker-compose ps
 
       - name: Install Rust toolchain
         run: |
