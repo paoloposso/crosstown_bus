@@ -12,16 +12,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      rabbitmq:
-        image: rabbitmq:latest
-        ports:
-          - "5672:5672"
-          - "15672:15672"
-        env:
-          RABBITMQ_DEFAULT_USER: user
-          RABBITMQ_DEFAULT_PASS: password
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
