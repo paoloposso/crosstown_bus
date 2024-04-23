@@ -75,7 +75,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
 
     thread::sleep(Duration::from_secs(1));
 
-    assert!(received_messages[0].user_id == "asdf" || received_messages[0].user_id == "1234" || received_messages[0].user_id == "100");
+    assert!(received_messages.len() == 6);
 
     publisher.close_connection()?;
     Ok(())
