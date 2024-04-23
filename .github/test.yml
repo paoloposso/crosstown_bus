@@ -1,0 +1,43 @@
+name: Rust Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      rabbitmq:
+        image: rabbitmq:latest
+        ports:
+          - "5672:5672"
+          - "15672:15672"
+        env:
+          RABBITMQ_DEFAULT_USER: user
+          RABBITMQ_DEFAULT_PASS: password
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Docker Compose
+        run: |
+          docker-compose up -d
+          docker-compose ps
+
+      - name: Setup Rust
+        uses: actions/setup-rust@v1
+
+      - name: Build and Test
+        run: |
+          cargo build --verbose
+          cargo test --verbose
+
+      - name: Stop Docker Compose
+        run: docker-compose down
