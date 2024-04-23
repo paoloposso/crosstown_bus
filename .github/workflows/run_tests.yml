@@ -31,8 +31,11 @@ jobs:
           docker-compose up -d
           docker-compose ps
 
-      - name: Setup Rust
-        uses: actions/setup-rust@v1
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup component add --toolchain stable rustfmt rust-src
+          rustup default stable
 
       - name: Build and Test
         run: |
