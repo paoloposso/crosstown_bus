@@ -14,3 +14,4 @@ logs:
 
 test:
 	cargo test -- --nocapture
+	

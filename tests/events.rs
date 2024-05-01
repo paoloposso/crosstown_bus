@@ -55,3 +55,23 @@ impl MessageHandler<UserCreatedMessage> for AddUserToDBHandler {
         Ok(())
     }
 }
+
+pub struct AddUserToDBDeadLetterHandler {
+    received_messages: Arc<Mutex<Vec<UserCreatedMessage>>>,
+}
+
+impl AddUserToDBDeadLetterHandler {
+    pub fn new(received_messages: Arc<Mutex<Vec<UserCreatedMessage>>>) -> Self {
+        Self { received_messages }
+    }
+}
+
+impl MessageHandler<UserCreatedMessage> for AddUserToDBDeadLetterHandler {
+    fn handle(&self, message: Box<UserCreatedMessage>) -> Result<(), HandleError> {
+        self.received_messages.lock().unwrap().push(*message.clone());
+
+        println!("Dead letter for AddUserToDBHandler message received: {:?}", message);
+
+        Ok(())
+    }
+}

@@ -49,6 +49,9 @@ In your terminal, run `cargo test` to run the tests.
 You can check out the exchanges, queues and messages on the RabbitMQ admin page.
 
 
+## Code examples
+The file `send_receive_integration_test` contains useful examples of sending messages and subscribing to exchanges to receive messages.
+
 ## Creating an Event Message
 Notice that the Message type we want to send and receive between services is **UserCreatedMessage**.
 
@@ -136,6 +139,32 @@ _ = publisher.publish("notify_user".to_owned(),
 ```
 Since the method send receives a generic parameter as the Message, we can use the same sender object to publish multiple objects types to multiple queues.
 **Warning:** if the message type you are publishing on a queue doesn't match what the subscriber handler is expecting, it will not be possible to parse the message and a message will be logged.
+
+## Dead Letter Exchange
+Dead letter exchanges are useful when you want to handle messages that were not processed correctly.
+
+When subscribing to an event, you can set the use_dead_letter property to true, so that the messages that were not processed correctly are sent to a dead letter exchange.
+```Rust
+            use_dead_letter: true,
+```
+
+### Subscribing to the Dead Letter Exchange
+When the handler fails on trying to process the message, the message is sent to the dead letter exchange.
+
+You can create a handler to process these messages, and subscribe to the dead letter exchange.
+
+```Rust
+dl_subscriber.subscribe(
+        "insert_user.dlx".to_owned(),
+        AddUserToDBDeadLetterHandler::new(received_messages.clone()),
+        QueueProperties {
+            auto_delete: false,
+            durable: false,
+            use_dead_letter: false,
+            consume_queue_name: Some("handle_insert_user_dl".to_string()),
+        },
+    )?;
+```
 
 ## Closing the connection to RabbitMQ
 
