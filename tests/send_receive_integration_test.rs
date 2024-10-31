@@ -3,11 +3,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use crosstown_bus::{
-    CrosstownBus, QueueProperties,
-};
+use crosstown_bus::{CrosstownBus, QueueProperties};
 
-use crate::events::{AddUserToDBDeadLetterHandler, AddUserToDBHandler, NotifyUserHandler, UserCreatedMessage};
+use crate::events::{
+    AddUserToDBDeadLetterHandler, AddUserToDBHandler, NotifyUserHandler, UserCreatedMessage,
+};
 
 mod events;
 
@@ -16,7 +16,8 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     let received_messages = Arc::new(Mutex::new(Vec::new()));
     let subscriber = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
     let subscriber2 = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
-    let dl_subscriber = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
+    let dl_subscriber =
+        CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 
     subscriber.subscribe(
         "user_created".to_owned(),
@@ -71,7 +72,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
             email: "gl@test.com".to_owned(),
         },
     )?;
-   
+
     publisher.send(
         "user_created".to_owned(),
         UserCreatedMessage {
@@ -86,6 +87,8 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     let received_messages = received_messages.lock().unwrap();
 
     thread::sleep(Duration::from_secs(1));
+
+    print!("{}", received_messages.len());
 
     assert!(received_messages.len() == 7);
 
