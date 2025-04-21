@@ -1,30 +1,14 @@
 [package]
 name = "crosstown_bus"
-version = "1.1.3"
+version = "1.1.4"
 edition = "2021"
 authors = ["paoloposso <pvictorsys@gmail.com>"]
 readme = "README.md"
 repository = "https://github.com/paoloposso/crosstown_bus"
 description = "Event Bus with RabbitMQ for Rust"
 license = "MIT OR Apache-2.0"
-keywords = [
-    "rust",
-    "sdk",
-    "messaging",
-    "amqp",
-    "borsh",
-    "gemini-api",
-    "serialization",
-    "queue",
-    "message-handler",
-]
-categories = [
-    "network-programming",
-    "asynchronous",
-    "api-bindings",
-    "data-structures",
-    "development-tools::debugging",
-]
+keywords = ["messaging", "amqp", "borsh", "queue", "message-handler"]
+categories = ["async", "api-bindings", "microservices"]
 
 [dependencies]
 amiquip = "0.4.2"
