@@ -8,11 +8,9 @@ repository = "https://github.com/paoloposso/crosstown_bus"
 description = "Event Bus with RabbitMQ for Rust"
 license = "MIT OR Apache-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 amiquip = "0.4.2"
 futures = "0.3.31"
-borsh = "1.5.1"
-borsh-derive = "1.5.1"
-tokio = { version = "1.41.0", features = ["full"] }
+borsh = "1.5.7"
+borsh-derive = "1.5.7"
+tokio = { version = "1.44.2", features = ["full"] }
