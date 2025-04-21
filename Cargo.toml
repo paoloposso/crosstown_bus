@@ -7,6 +7,24 @@ readme = "README.md"
 repository = "https://github.com/paoloposso/crosstown_bus"
 description = "Event Bus with RabbitMQ for Rust"
 license = "MIT OR Apache-2.0"
+keywords = [
+    "rust",
+    "sdk",
+    "messaging",
+    "amqp",
+    "borsh",
+    "gemini-api",
+    "serialization",
+    "queue",
+    "message-handler",
+]
+categories = [
+    "network-programming",
+    "asynchronous",
+    "api-bindings",
+    "data-structures",
+    "development-tools::debugging",
+]
 
 [dependencies]
 amiquip = "0.4.2"
