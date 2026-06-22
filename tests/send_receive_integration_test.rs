@@ -15,9 +15,6 @@ mod events;
 fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     let received_messages = Arc::new(Mutex::new(Vec::new()));
     let subscriber = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
-    let subscriber2 = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
-    let dl_subscriber =
-        CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 
     subscriber.subscribe(
         "user_created".to_owned(),
@@ -30,7 +27,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    subscriber2.subscribe(
+    subscriber.subscribe(
         "user_created".to_owned(),
         AddUserToDBHandler::new(received_messages.clone()),
         QueueProperties {
@@ -41,7 +38,7 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    dl_subscriber.subscribe(
+    subscriber.subscribe(
         "insert_user.dlx".to_owned(),
         AddUserToDBDeadLetterHandler::new(received_messages.clone()),
         QueueProperties {
@@ -93,5 +90,6 @@ fn send_receive_successful() -> Result<(), Box<dyn Error>> {
     assert!(received_messages.len() == 7);
 
     publisher.close_connection()?;
+    subscriber.close_connection()?;
     Ok(())
 }

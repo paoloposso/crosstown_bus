@@ -5,12 +5,11 @@ use amiquip::{ExchangeDeclareOptions, ExchangeType};
 pub type GenericResult = Result<(), Box<dyn Error>>;
 
 pub(crate) fn create_exchange<'a>(exchange_name: &'a String, exchange_type: String, channel: &'a amiquip::Channel) -> amiquip::Exchange<'a> {
-    let ex_type;
-    if exchange_type == "fanout" {
-        ex_type = ExchangeType::Fanout;
+    let ex_type = if exchange_type == "fanout" {
+        ExchangeType::Fanout
     } else {
-        ex_type = ExchangeType::Direct;
-    }
+        ExchangeType::Direct
+    };
     let exchange = channel.exchange_declare(ex_type, exchange_name, ExchangeDeclareOptions::default()).unwrap();
     exchange
 }
