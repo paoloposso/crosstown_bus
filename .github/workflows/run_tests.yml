@@ -1,12 +1,7 @@
 name: Rust Tests
 
-# on:
-  # push:
-  #   branches:
-  #     - main
-  # pull_request:
-  #   branches:
-  #     - main
+on:
+  workflow_dispatch:
 
 jobs:
   run_tests:
