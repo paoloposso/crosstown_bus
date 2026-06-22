@@ -6,7 +6,7 @@ mod bus;
 mod message_handler;
 mod common;
 
-use std::{error::Error, cell::RefCell};
+use std::{error::Error, sync::Mutex};
 
 use amiquip::Connection;
 use bus::{Publisher, Subscriber};
@@ -19,13 +19,13 @@ pub struct CrosstownBus();
 impl CrosstownBus {
     pub fn new_subscriber(url: String) -> Result<Subscriber, Box<dyn Error>> {
         Ok(Subscriber {
-            cnn: RefCell::new(Connection::insecure_open(&url)?)
+            cnn: Mutex::new(Connection::insecure_open(&url)?)
         })
     }
     
     pub fn new_publisher(url: String) -> Result<Publisher, Box<dyn Error>> {
         Ok(Publisher {
-            cnn: RefCell::new(Connection::insecure_open(&url)?)
+            cnn: Connection::insecure_open(&url)?
         })
     }
 }

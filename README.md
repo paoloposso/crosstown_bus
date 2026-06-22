@@ -79,36 +79,30 @@ borsh = "1.4.0"
 borsh-derive = "1.4.0"
 ```
 
-## Linstening to an Event Message
-First, let's create a Receiver object
+## Listening to an Event Message
+First, let's create a Subscriber object:
 
-```
+```rust
 let subscriber = CrosstownBus::new_subscriber("amqp://guest:guest@localhost:5672".to_owned())?;
 ```
 
-After that, call the subscribe_event method, passing the event name / queue name that you want to subbscribe to.
-If the queue was not created on RabbitMQ, it will be created when the receiver subscribes to it.
+After that, call the `subscribe` method, passing the event name / queue name that you want to subscribe to.
+If the queue does not exist on RabbitMQ, it will be created and bound to the exchange. Since `subscribe` takes a reference (`&self`), you can register multiple subscriptions using the same subscriber connection instance.
 
-``` Rust
+```rust
 subscriber.subscribe(
-        "user_created".to_owned(),
-        NotifyUserHandler::new(received_messages.clone()),
-        QueueProperties {
-            auto_delete: false,
-            durable: false,
-            use_dead_letter: true,
-            consume_queue_name: Some("queue2".to_string()),
-        },
-    )?;
-
-```
-Please Note that the _subscribe_event_ method in async, therefore, I'm calling _await_ when invoking it.
-Another option is to block it, by using the following notation:
-```
-futures::executor::block_on(receiver.receive("notify_user".to_owned(), NotifyUserEventHandler, None));
+    "user_created".to_owned(),
+    NotifyUserHandler::new(received_messages.clone()),
+    QueueProperties {
+        auto_delete: false,
+        durable: false,
+        use_dead_letter: true,
+        consume_queue_name: Some("queue2".to_string()),
+    },
+)?;
 ```
 
-The parameter queue_properties is optional and holds specific queue configurations, such as whether the queue should be auto deleted and durable.
+The parameter `queue_properties` holds specific queue configurations, such as whether the queue should be auto-deleted, durable, or if it should utilize a dead letter exchange.
 
 ### !!! Important: consume_queue_name !!!
 
@@ -120,25 +114,25 @@ Every queue receives a copy of the message.
 
 Subscribers may have, each of them, a different queue. All these queues will receive a copy of the message.
 
-Subscribers that use the same queue, will compete for the messages so these messages will be distributed among them. The outcome is that they will not receive all the messages every time.
+Subscribers that use the same queue will compete for the messages so these messages will be distributed among them. The outcome is that they will not receive all the messages every time.
 
 So, if you have multiple subscribers that need to handle the same messages, choose a different queue name for each of them.
 
 ## Publishing / sending an Event Message
-To create the sender the process is pretty much the same, only a different creation method.
+To create the publisher the process is pretty much the same, only using a different creation method:
 
-``` Rust
+```rust
 let mut publisher = CrosstownBus::new_publisher("amqp://guest:guest@localhost:5672".to_owned())?;
 
-_ = publisher.publish("notify_user".to_owned(), 
-        UserCreatedMessage {
-            user_id: "asdf".to_owned(),
-            user_name: "Billy Gibbons".to_owned(),
-            email: "bg@test.com".to_owned()
-        });
+_ = publisher.send("user_created".to_owned(), 
+    UserCreatedMessage {
+        user_id: "asdf".to_owned(),
+        user_name: "Billy Gibbons".to_owned(),
+        email: "bg@test.com".to_owned()
+    });
 ```
-Since the method send receives a generic parameter as the Message, we can use the same sender object to publish multiple objects types to multiple queues.
-**Warning:** if the message type you are publishing on a queue doesn't match what the subscriber handler is expecting, it will not be possible to parse the message and a message will be logged.
+Since the method `send` receives a generic parameter as the Message, you can use the same publisher object to publish multiple object types to multiple queues.
+**Warning:** if the message type you are publishing on a queue doesn't match what the subscriber handler is expecting, it will not be possible to parse/deserialize the message.
 
 ## Dead Letter Exchange
 Dead letter exchanges are useful when you want to handle messages that were not processed correctly.
@@ -153,8 +147,8 @@ When the handler fails on trying to process the message, the message is sent to 
 
 You can create a handler to process these messages, and subscribe to the dead letter exchange.
 
-```Rust
-dl_subscriber.subscribe(
+```rust
+subscriber.subscribe(
         "insert_user.dlx".to_owned(),
         AddUserToDBDeadLetterHandler::new(received_messages.clone()),
         QueueProperties {

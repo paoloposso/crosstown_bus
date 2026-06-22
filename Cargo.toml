@@ -1,7 +1,8 @@
 [package]
 name = "crosstown_bus"
-version = "1.1.4"
+version = "2.0.0"
 edition = "2021"
+rust-version = "1.80"
 authors = ["paoloposso <pvictorsys@gmail.com>"]
 readme = "README.md"
 repository = "https://github.com/paoloposso/crosstown_bus"
@@ -12,7 +13,5 @@ categories = ["async", "api-bindings", "microservices"]
 
 [dependencies]
 amiquip = "0.4.2"
-futures = "0.3.31"
 borsh = "1.5.7"
 borsh-derive = "1.5.7"
-tokio = { version = "1.44.2", features = ["full"] }
