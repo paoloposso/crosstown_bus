@@ -9,7 +9,7 @@ repository = "https://github.com/paoloposso/crosstown_bus"
 description = "Event Bus with RabbitMQ for Rust"
 license = "MIT OR Apache-2.0"
 keywords = ["messaging", "amqp", "borsh", "queue", "message-handler"]
-categories = ["async", "api-bindings", "microservices"]
+categories = ["asynchronous", "api-bindings", "network-programming"]
 
 [dependencies]
 amiquip = "0.4.2"
